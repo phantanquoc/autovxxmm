@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vxmm
+      POSTGRES_PASSWORD: vxmm
+      POSTGRES_DB: vxmm
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vxmm"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://vxmm:vxmm@postgres:5432/vxmm?schema=public
+      PORT: 8009
+      NODE_ENV: production
+      JWT_SECRET: change-me-in-production
+      JWT_EXPIRES_IN: 7d
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin@123
+      LOG_LEVEL: info
+    ports:
+      - "8009:8009"
+
+volumes:
+  pgdata:

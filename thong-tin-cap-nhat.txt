@@ -1,0 +1,62 @@
+Nội dung cập nhật ngày [22/08/2024]:
+- Thêm tính năng giữ cho bot online: [Cài đặt] -> [Giữ bot offline]
+
+Nội dung cập nhật ngày [05/04/2024]:
+- [NEW] Thêm tuỳ chọn bật tắt hiển thị máy chủ ở trang đua top
+- Fix lỗi bot nhận đơn 2 người cùng lúc
+- Fix lỗi bot đặt cược nhiều lần cho 1 đơn
+- Fix lỗi sai thống kê số xu trong bot ở trang quản lí
+- Thay đổi logic giới hạn tài khoản đăng nhập cùng 1 thời điểm
+
+Nội dung cập nhật ngày [18/03/2024]:
+- Fix lỗi không thể lưu log gom xu khi nick có chứa [S_VIP]
+- Thêm tin nhắn tuỳ chọn khi có lỗi xảy ra trong quá trình đặt cược
+- Fix lỗi bot không phản hồi khi giao dịch tạo đơn đặt cược
+- Tối ưu tool
+
+Nội dung cập nhật ngày [04/03/2024]:
+- Cập nhật trạng thái đơn hàng theo thời gian thực trên web đua top
+- Cập nhật giao diện trang web đua top và thêm tuỳ chọn cấu hình trong trang quản lí
+- Thêm cột nhập xu thưởng tuỳ chỉnh để hiển thị trên web đua top
+- Fix lỗi khi giao dịch mà lỡ tắt giao dịch thì phải chat lại số giây đặt cược
+- Thêm tuỳ chọn xem top của ngày hôm trước
+- Tối ưu tool
+
+Nội dung cập nhật ngày [03/03/2024]:
+- [NEW] Tính năng chia client (cho phép chia bot ra treo tại nhiều VPS)
+    * HƯỚNG DẪN:
+        Ở mục `Quản lí bot` có cột `Client`, phân chia thủ cột bot vào các client tương ứng
+        Sau đó ở phần đăng nhập trong tool có tính năng chia client, tick vào ô để bật và chọn client muốn chạy
+- [NEW] Thêm tính năng che phần triệu ở số xu tham gia ví dụ `10_000_000` sau khi che thành `*_000_00`
+- [NEW] Thêm tính năng thay đổi trạng thái đơn hàng hoặc xoá đơn hàng sẽ cập nhật ngay vào trong tool (không cần phải chạy lại tool)
+- Fix lỗi không báo % tỉ lệ thắng khi chốt vòng xoay
+
+Nội dung cập nhật ngày [02/03/2024]:
+- [NEW] Thêm tính năng tuỳ chỉnh map lưu toạ độ của bot trong mục `Cài đặt` ở tool
+- [BETA] Tính năng chia client (dùng để chia ra treo tool tại nhiều VPS)
+- Tối ưu phần tìm kiếm bot theo tên nhân vật (tìm kiếm tương đồng)
+- Fix lỗi khi khởi động tool mà bot chưa đăng nhập sau nó kích hoạt thì bot không online
+- Fix chia cột `Vị trí` trên web đua top thành 2 cột, `Map` và `Khu`
+- Fix sắp xếp vị trí bot web đua top theo map và khu tăng dần
+- Fix lại hiển thị tổng số xu tất cả các bot (chỉ tính bot đang online)
+- Fix hiển thị 1 kí tự đầu tiên khi che tên top người chơi
+- Fix web đua top hiển thị số xu thắng cuộc = số xu sau khi đã trừ phí
+
+Nội dung cập nhật ngày [29/02/2024]:
+- Tối ưu CPU treo nhiều nick ổn định hơn
+- Fix lỗi nhập danh sách bot gom xu hoặc bơm xu bị báo "null"
+- Fix lỗi bot bị sai vị trí
+- [NEW] Thêm tính năng tuỳ chỉnh tin nhắn chat sau khi nhận đơn, đặt cược, thua, thắng, trả thưởng trong mục `Cài đặt`
+
+Nội dung cập nhật ngày [28/02/2024]:
+- Tối ưu hiệu suất giao diện và hệ thống
+- Tối ưu tính năng tự pt nhóm để vào map giữa các bot
+- Làm lại tính năng gom xu (bot gom xu sẽ đến map của bot đặt thuê để gom, tự pt nếu như map đã full)
+- Thêm tính năng `Lịch sử giao dịch` ở trên web quản lý
+- Fix lỗi khi tìm kiếm trên web quản lý
+- Làm mới giao diện web đua top, thêm nhiều tính năng hơn trong phần `Quản lý trang đua top`
+- Cho phép gom xu qua nhân vật quản lý
+- Cho phép nhân vật quản lý mời bot đặt thuê vào nhóm
+- Làm lại cơ chế nhận đơn đặt cược: nếu có người người chat số giây 1 lúc thì ai giao dịch xu trước thì người đó sẽ là người thuê bot
+- Chỉ cho phép tạo đơn đặt cược khi cùng map với bot đặt thuê
+- Tool sẽ tự kết nối lại khi hệ thống bị sập

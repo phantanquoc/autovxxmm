@@ -1,0 +1,175 @@
+// Prisma schema for VXMM backend
+// Khớp 1-1 với API contract mà tool client Java đang gọi.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum BotStatus {
+  ONLINE
+  OFFLINE
+  CONNECTING
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  role      Role     @default(USER)
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sessions  ClientSyncState[]
+}
+
+model Server {
+  id    Int    @id
+  name  String
+  ip    String
+  port  Int
+  type  Int    @default(0)
+  bots  Bot[]
+}
+
+model Bot {
+  id            Int       @id @default(autoincrement())
+  serverId      Int
+  account       String
+  password      String
+  charName      String
+  mapId         Int       @default(0)
+  zoneId        Int       @default(0)
+  posX          Int       @default(0)
+  posY          Int       @default(0)
+  manager       String    @default("")
+  chat          String    @default("")
+  sms           String    @default("")
+  enable        Boolean   @default(true)
+  playFee      Int       @default(0)
+  typeLuckyDraw Int       @default(0)
+  client        Int       @default(0)
+
+  obsName       String?
+  obsLevel      Int?
+  obsClan       String?
+  obsCoin       Int?
+  obsGold       Int?
+  obsStatus     BotStatus @default(OFFLINE)
+  obsLastOnline BigInt    @default(0)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  server        Server    @relation(fields: [serverId], references: [id])
+  orders        Order[]
+  reassignments BotReassignment[]
+
+  @@index([serverId, deletedAt])
+  @@index([client, deletedAt])
+  @@index([updatedAt])
+}
+
+model BotReassignment {
+  id          BigInt   @id @default(autoincrement())
+  botId       Int
+  fromClient  Int
+  toClient    Int
+  createdAt   DateTime @default(now())
+
+  bot         Bot      @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([botId])
+}
+
+model Order {
+  id          Int       @id @default(autoincrement())
+  serverId    Int
+  botId       Int
+  client      Int       @default(0)
+  name        String
+  bot         String
+  second      Int
+  type        Int
+  timeStart   BigInt
+  timeStop    BigInt    @default(0)
+  coinOrder   Int
+  coinWin     Int       @default(0)
+  coinFee     Int       @default(0)
+  coinReward  Int       @default(0)
+  status      Int       @default(0)
+  winName     String?
+  reason      String?
+  log         String?   @db.Text
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  botEntity   Bot       @relation(fields: [botId], references: [id])
+
+  @@index([botId, status])
+  @@index([serverId, status])
+  @@index([updatedAt])
+}
+
+model TradeLog {
+  id          BigInt   @id @default(autoincrement())
+  serverId    Int
+  name        String
+  customer    String
+  before      Int
+  after       Int
+  change      Int
+  description String   @db.Text
+  type        Int
+  timeStart   BigInt
+  timeStop    BigInt
+  createdAt   DateTime @default(now())
+
+  @@index([serverId, customer])
+  @@index([createdAt])
+}
+
+model Block {
+  id        Int      @id @default(autoincrement())
+  serverId  Int
+  name      String
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@unique([serverId, name])
+}
+
+// Mỗi (user, client) duy trì timestamp riêng cho từng loại change.
+// Khi client poll /check-update, ta so sánh các timestamp này với updatedAt/deletedAt
+// trong DB để trả về flag boolean. Sau khi client gọi /new|/updated|/deleted thì timestamp
+// tương ứng được advance.
+model ClientSyncState {
+  id                   Int      @id @default(autoincrement())
+  userId               Int
+  client               Int      @default(0)
+  newBotsAt            DateTime @default(now())
+  updatedBotsAt        DateTime @default(now())
+  deletedBotsAt        DateTime @default(now())
+  reassignedOutAt      DateTime @default(now())
+  reassignedInAt       DateTime @default(now())
+  ordersUpdatedAt      DateTime @default(now())
+  ordersDeletedAt      DateTime @default(now())
+  lastSeenAt           DateTime @default(now())
+
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, client])
+}

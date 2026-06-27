@@ -1,0 +1,37 @@
+import { createHashRouter } from 'react-router-dom'
+import { AppLayout } from '@/components/layout/AppLayout'
+import { AuthGuard } from '@/features/auth/AuthGuard'
+import { LoginPage } from '@/features/auth/LoginPage'
+import { DashboardPage } from '@/features/dashboard/DashboardPage'
+import { BotListPage } from '@/features/bots/BotListPage'
+import { OrderListPage } from '@/features/orders/OrderListPage'
+import { TradeLogListPage } from '@/features/trade-logs/TradeLogListPage'
+import { ServerListPage } from '@/features/servers/ServerListPage'
+import { UserListPage } from '@/features/users/UserListPage'
+import { BlockListPage } from '@/features/blocks/BlockListPage'
+import { SettingsPage } from '@/features/settings/SettingsPage'
+import { NotFound } from '@/features/error/NotFound'
+import { ErrorBoundary } from '@/features/error/ErrorBoundary'
+
+export const router = createHashRouter([
+  { path: '/login', element: <LoginPage /> },
+  {
+    element: (
+      <AuthGuard>
+        <AppLayout />
+      </AuthGuard>
+    ),
+    errorElement: <ErrorBoundary />,
+    children: [
+      { path: '/', element: <DashboardPage /> },
+      { path: '/bots', element: <BotListPage /> },
+      { path: '/orders', element: <OrderListPage /> },
+      { path: '/trade-logs', element: <TradeLogListPage /> },
+      { path: '/servers', element: <ServerListPage /> },
+      { path: '/users', element: <UserListPage /> },
+      { path: '/blocks', element: <BlockListPage /> },
+      { path: '/settings', element: <SettingsPage /> },
+      { path: '*', element: <NotFound /> },
+    ],
+  },
+])

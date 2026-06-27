@@ -1,0 +1,3 @@
+- Đăng nhập tài khoản và mật khẩu trên web NsoVxmm.Net để quản lý đơn hàng, quản lý hoặc thêm bot đặt thuê, ...
+- Copy tool vào VPS, sau đó mở tệp `click-2-lan-vao-file-nay-de-chay-tool.bat` để mở tool
+- Sau khi tool được mở sẽ hiển thị giao diện đăng nhập, ở bước này đăng nhập tài khoản và mật khẩu như ở web là đã xong

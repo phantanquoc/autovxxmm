@@ -1,0 +1,15 @@
+** SV: ID của máy chủ (xem trong phần thêm bot trên web) 
+**      Lưu ý: ID của máy chủ đã được thay đổi chính xác hơn ví dụ ID máy chủ Bokken cũ là 0 thì giờ là 1
+** TK: Tên tài khoản
+** MK: Mật khẩu tài khoản gom xu
+** NV: Tên nhân vật (tuỳ chọn)
+
+[SV]1[/SV][TK]TEN_TAI_KHOAN[/TK][MK]MAT_KHAU[/MK][NV][/NV]
+[SV]2[/SV][TK]TEN_TAI_KHOAN[/TK][MK]MAT_KHAU[/MK][NV][/NV]
+[SV]3[/SV][TK]TEN_TAI_KHOAN[/TK][MK]MAT_KHAU[/MK][NV][/NV]
+[SV]4[/SV][TK]TEN_TAI_KHOAN[/TK][MK]MAT_KHAU[/MK][NV][/NV]
+[SV]5[/SV][TK]TEN_TAI_KHOAN[/TK][MK]MAT_KHAU[/MK][NV][/NV]
+[SV]6[/SV][TK]TEN_TAI_KHOAN[/TK][MK]MAT_KHAU[/MK][NV][/NV]
+[SV]7[/SV][TK]TEN_TAI_KHOAN[/TK][MK]MAT_KHAU[/MK][NV][/NV]
+[SV]8[/SV][TK]TEN_TAI_KHOAN[/TK][MK]MAT_KHAU[/MK][NV][/NV]
+[SV]9[/SV][TK]TEN_TAI_KHOAN[/TK][MK]MAT_KHAU[/MK][NV][/NV]

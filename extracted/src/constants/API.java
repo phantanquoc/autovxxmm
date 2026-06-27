@@ -1,0 +1,13 @@
+/*
+ * Decompiled with CFR 0.152.
+ */
+package constants;
+
+public class API {
+    public static String url = "https://api.nsovxmm.net";
+
+    public static String createUrl(String api) {
+        return url + api;
+    }
+}
+
