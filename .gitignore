@@ -32,3 +32,9 @@ Thumbs.db
 
 # Pre-migration DB backups — large binary dumps, keep on disk but not in git
 backend/backup-pre-tenant.sql
+
+# Runtime artifacts ghi bởi tool Java — không bao giờ commit
+# records/credentials.txt do LoginUI.java ghi (creds đã encode)
+# player-logs/* do LocalLog.java ghi (log nhân vật theo ngày)
+records/credentials.txt
+player-logs/
