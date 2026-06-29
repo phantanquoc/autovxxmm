@@ -29,3 +29,6 @@ Thumbs.db
 
 # Local secrets — backend/.env intentionally kept (private repo per owner request)
 # Add new local-only env files here if needed
+
+# Pre-migration DB backups — large binary dumps, keep on disk but not in git
+backend/backup-pre-tenant.sql
