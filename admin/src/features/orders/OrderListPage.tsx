@@ -1,11 +1,8 @@
 import { useState } from 'react'
-import { Trash2 } from 'lucide-react'
-import { toast } from 'sonner'
-import { useOrders, useOrderDelete, Order } from './useOrders'
+import { useOrders, Order } from './useOrders'
 import { useServers } from '@/features/servers/useServers'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { DataTable } from '@/components/data-table/DataTable'
 import { DataTablePagination } from '@/components/data-table/DataTablePagination'
@@ -13,6 +10,8 @@ import { DataTableToolbar } from '@/components/data-table/DataTableToolbar'
 import { EmptyState } from '@/components/data-table/EmptyState'
 import { StatusBadge } from '@/components/domain/StatusBadge'
 import { XuAmount } from '@/components/domain/XuAmount'
+import { OwnerFilter } from '@/components/OwnerFilter'
+import { getCurrentUser } from '@/lib/auth'
 import { formatDateTime } from '@/lib/format'
 
 const STATUS_OPTIONS = [
@@ -34,6 +33,9 @@ export function OrderListPage({ limit, hideHeader }: OrderListPageProps = {}) {
   const pageSize = limit ?? 25
   const [filterValues, setFilterValues] = useState<Record<string, string>>({})
   const [searchQ, setSearchQ] = useState('')
+  const [ownerIdFilter, setOwnerIdFilter] = useState<number | undefined>(undefined)
+
+  const isAdmin = getCurrentUser()?.role === 'ADMIN'
 
   const { data: serverResult } = useServers()
   const servers = serverResult?.items ?? []
@@ -47,11 +49,10 @@ export function OrderListPage({ limit, hideHeader }: OrderListPageProps = {}) {
     sort: 'id',
     order: 'desc',
     filter,
+    ownerId: ownerIdFilter,
   })
   const orders = orderResult?.items ?? []
   const total = orderResult?.total ?? 0
-
-  const deleteMutation = useOrderDelete()
 
   function handleFilter(key: string, value: string) {
     setFilterValues(prev => {
@@ -63,20 +64,16 @@ export function OrderListPage({ limit, hideHeader }: OrderListPageProps = {}) {
     setPage(1)
   }
 
-  async function handleDelete(order: Order) {
-    if (!confirm(`Xoá đơn hàng #${order.id}?`)) return
-    try {
-      await deleteMutation.mutateAsync(order.id)
-      toast.success('Đã xoá đơn hàng')
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Có lỗi xảy ra')
-    }
-  }
-
   const serverOptions = servers.map(s => ({ value: String(s.id), label: s.name }))
 
   const tableContent = (
     <>
+      {isAdmin && !limit && (
+        <div className="px-4 pt-4 flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Người dùng:</span>
+          <OwnerFilter value={ownerIdFilter} onChange={(v) => { setOwnerIdFilter(v); setPage(1) }} />
+        </div>
+      )}
       {!limit && (
         <DataTableToolbar
           searchPlaceholder="Tìm tên bot/người chơi..."
@@ -125,18 +122,9 @@ export function OrderListPage({ limit, hideHeader }: OrderListPageProps = {}) {
             cell: (o) => (
               <div className="flex items-center gap-1">
                 <Switch checked={o.status !== 5} disabled aria-label="Trạng thái" />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-destructive hover:text-destructive"
-                  onClick={() => handleDelete(o)}
-                  aria-label="Xoá đơn"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
               </div>
             ),
-            width: '100px',
+            width: '80px',
           },
         ]}
       />

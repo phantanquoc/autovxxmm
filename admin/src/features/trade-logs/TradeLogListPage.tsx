@@ -9,6 +9,8 @@ import { DataTablePagination } from '@/components/data-table/DataTablePagination
 import { DataTableToolbar } from '@/components/data-table/DataTableToolbar'
 import { EmptyState } from '@/components/data-table/EmptyState'
 import { XuAmount } from '@/components/domain/XuAmount'
+import { OwnerFilter } from '@/components/OwnerFilter'
+import { getCurrentUser } from '@/lib/auth'
 import { formatDateTime } from '@/lib/format'
 
 const TYPE_OPTIONS = Object.entries(TRADE_TYPE_MAP).map(([v, l]) => ({ value: v, label: l }))
@@ -18,6 +20,9 @@ export function TradeLogListPage() {
   const pageSize = 25
   const [filterValues, setFilterValues] = useState<Record<string, string>>({})
   const [searchQ, setSearchQ] = useState('')
+  const [ownerIdFilter, setOwnerIdFilter] = useState<number | undefined>(undefined)
+
+  const isAdmin = getCurrentUser()?.role === 'ADMIN'
 
   const { data: serverResult } = useServers()
   const servers = serverResult?.items ?? []
@@ -32,6 +37,7 @@ export function TradeLogListPage() {
     sort: 'id',
     order: 'desc',
     filter,
+    ownerId: ownerIdFilter,
   })
   const logs = logResult?.items ?? []
   const total = logResult?.total ?? 0
@@ -50,6 +56,12 @@ export function TradeLogListPage() {
     <div>
       <PageHeader title="Giao dịch xu" />
       <Card>
+        {isAdmin && (
+          <div className="px-4 pt-4 flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Người dùng:</span>
+            <OwnerFilter value={ownerIdFilter} onChange={(v) => { setOwnerIdFilter(v); setPage(1) }} />
+          </div>
+        )}
         <DataTableToolbar
           searchPlaceholder="Tìm tên bot/khách..."
           onSearch={q => { setSearchQ(q); setPage(1) }}

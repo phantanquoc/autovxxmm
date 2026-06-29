@@ -13,11 +13,22 @@ export function AuthGuard({ children }: AuthGuardProps) {
     return <Navigate to="/login" replace />
   }
 
+  return <>{children}</>
+}
+
+interface AdminOnlyRouteProps {
+  children: ReactNode
+}
+
+export function AdminOnlyRoute({ children }: AdminOnlyRouteProps) {
+  const token = getToken()
+  if (!token || isExpired(token)) {
+    return <Navigate to="/login" replace />
+  }
   const payload = decodeJwt(token)
   if (!payload || payload.role !== 'ADMIN') {
-    return <AccessDenied />
+    return <Navigate to="/" replace />
   }
-
   return <>{children}</>
 }
 

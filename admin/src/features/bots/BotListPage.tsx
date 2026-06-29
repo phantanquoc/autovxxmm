@@ -17,6 +17,8 @@ import { EmptyState } from '@/components/data-table/EmptyState'
 import { ServerBadge } from '@/components/domain/ServerBadge'
 import { BotStatusDot } from '@/components/domain/BotStatusDot'
 import { XuAmount } from '@/components/domain/XuAmount'
+import { OwnerFilter } from '@/components/OwnerFilter'
+import { getCurrentUser } from '@/lib/auth'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,6 +55,9 @@ export function BotListPage() {
   const [searchQ, setSearchQ] = useState('')
   const [openCreate, setOpenCreate] = useState(false)
   const [editTarget, setEditTarget] = useState<Bot | null>(null)
+  const [ownerIdFilter, setOwnerIdFilter] = useState<number | undefined>(undefined)
+
+  const isAdmin = getCurrentUser()?.role === 'ADMIN'
 
   const { data: serverResult } = useServers()
   const servers = serverResult?.items ?? []
@@ -77,6 +82,7 @@ export function BotListPage() {
     sort: 'id',
     order: 'asc',
     filter,
+    ownerId: ownerIdFilter,
   })
   const bots = botResult?.items ?? []
   const total = botResult?.total ?? 0
@@ -95,6 +101,7 @@ export function BotListPage() {
   }
 
   async function toggleEnable(id: number, value: boolean) {
+    if (isAdmin) return // admin cannot mutate
     try {
       await mutation.mutateAsync({ id, enable: value })
     } catch (err: unknown) {
@@ -127,12 +134,21 @@ export function BotListPage() {
       <PageHeader
         title="Bot"
         actions={
-          <Button onClick={() => setOpenCreate(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Thêm bot
-          </Button>
+          !isAdmin ? (
+            <Button onClick={() => setOpenCreate(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Thêm bot
+            </Button>
+          ) : undefined
         }
       />
+
+      {isAdmin && (
+        <div className="mb-4 flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Người dùng:</span>
+          <OwnerFilter value={ownerIdFilter} onChange={(v) => { setOwnerIdFilter(v); setPage(1) }} />
+        </div>
+      )}
 
       <Card>
         <DataTableToolbar
@@ -155,7 +171,7 @@ export function BotListPage() {
           emptyState={
             <EmptyState
               title="Chưa có bot"
-              action={<Button onClick={() => setOpenCreate(true)}>Thêm bot</Button>}
+              action={!isAdmin ? <Button onClick={() => setOpenCreate(true)}>Thêm bot</Button> : undefined}
             />
           }
           columns={[
@@ -214,6 +230,7 @@ export function BotListPage() {
                 <Switch
                   checked={b.enable}
                   onCheckedChange={v => toggleEnable(b.id, v)}
+                  disabled={isAdmin}
                   aria-label={`Bot ${b.account} ${b.enable ? 'đang bật' : 'đang tắt'}`}
                 />
               ),
@@ -227,9 +244,9 @@ export function BotListPage() {
                 </Badge>
               ),
             },
-            {
+            ...(!isAdmin ? [{
               header: '',
-              cell: (b) => (
+              cell: (b: Bot) => (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" aria-label="Tuỳ chọn">
@@ -247,7 +264,7 @@ export function BotListPage() {
                 </DropdownMenu>
               ),
               width: '50px',
-            },
+            }] : []),
           ]}
         />
 
@@ -259,13 +276,17 @@ export function BotListPage() {
         />
       </Card>
 
-      <BotFormDialog open={openCreate} onClose={() => setOpenCreate(false)} />
-      {editTarget && (
-        <BotFormDialog
-          open
-          onClose={() => setEditTarget(null)}
-          initialData={editTarget}
-        />
+      {!isAdmin && (
+        <>
+          <BotFormDialog open={openCreate} onClose={() => setOpenCreate(false)} />
+          {editTarget && (
+            <BotFormDialog
+              open
+              onClose={() => setEditTarget(null)}
+              initialData={editTarget}
+            />
+          )}
+        </>
       )}
     </div>
   )

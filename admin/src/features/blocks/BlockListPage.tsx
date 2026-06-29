@@ -9,11 +9,17 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/data-table/DataTable'
 import { EmptyState } from '@/components/data-table/EmptyState'
+import { OwnerFilter } from '@/components/OwnerFilter'
+import { getCurrentUser } from '@/lib/auth'
 import { formatDateTime } from '@/lib/format'
 
 export function BlockListPage() {
   const [openCreate, setOpenCreate] = useState(false)
-  const { data: blockResult, isLoading } = useBlocks()
+  const [ownerIdFilter, setOwnerIdFilter] = useState<number | undefined>(undefined)
+
+  const isAdmin = getCurrentUser()?.role === 'ADMIN'
+
+  const { data: blockResult, isLoading } = useBlocks({ ownerId: ownerIdFilter })
   const blocks = blockResult?.items ?? []
   const { data: serverResult } = useServers()
   const servers = serverResult?.items ?? []
@@ -34,12 +40,21 @@ export function BlockListPage() {
       <PageHeader
         title="Block list"
         actions={
-          <Button onClick={() => setOpenCreate(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Thêm block
-          </Button>
+          !isAdmin ? (
+            <Button onClick={() => setOpenCreate(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Thêm block
+            </Button>
+          ) : undefined
         }
       />
+
+      {isAdmin && (
+        <div className="mb-4 flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Người dùng:</span>
+          <OwnerFilter value={ownerIdFilter} onChange={setOwnerIdFilter} />
+        </div>
+      )}
 
       <Card>
         <DataTable
@@ -49,7 +64,7 @@ export function BlockListPage() {
           emptyState={
             <EmptyState
               title="Chưa có block nào"
-              action={<Button onClick={() => setOpenCreate(true)}>Thêm block</Button>}
+              action={!isAdmin ? <Button onClick={() => setOpenCreate(true)}>Thêm block</Button> : undefined}
             />
           }
           columns={[
@@ -64,9 +79,9 @@ export function BlockListPage() {
             { header: 'Người chơi', cell: r => <span className="font-medium">{r.name}</span> },
             { header: 'Lý do', cell: r => <span className="text-sm text-muted-foreground">{r.reason ?? '—'}</span> },
             { header: 'Tạo lúc', cell: r => <span className="text-xs text-muted-foreground">{formatDateTime(r.createdAt)}</span> },
-            {
+            ...(!isAdmin ? [{
               header: '',
-              cell: r => (
+              cell: (r: Block) => (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -78,12 +93,14 @@ export function BlockListPage() {
                 </Button>
               ),
               width: '60px',
-            },
+            }] : []),
           ]}
         />
       </Card>
 
-      <BlockFormDialog open={openCreate} onClose={() => setOpenCreate(false)} />
+      {!isAdmin && (
+        <BlockFormDialog open={openCreate} onClose={() => setOpenCreate(false)} />
+      )}
     </div>
   )
 }

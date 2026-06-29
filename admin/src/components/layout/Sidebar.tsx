@@ -71,6 +71,7 @@ export function Sidebar() {
   })
 
   const user = getCurrentUser()
+  const isAdmin = user?.role === 'ADMIN'
 
   function toggleCollapse() {
     const next = !collapsed
@@ -82,6 +83,9 @@ export function Sidebar() {
     clearToken()
     window.location.hash = '#/login'
   }
+
+  // Admin sees Servers + Users; USER sees only Settings in system items
+  const visibleSystemItems = isAdmin ? systemItems : [systemItems[2]]
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -133,7 +137,7 @@ export function Sidebar() {
                 Hệ thống
               </p>
             )}
-            {systemItems.map(item => (
+            {visibleSystemItems.map(item => (
               <SidebarItem key={item.to} {...item} collapsed={collapsed} />
             ))}
           </div>

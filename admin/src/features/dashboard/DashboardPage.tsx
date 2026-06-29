@@ -7,14 +7,25 @@ import { RecentOrdersTable } from './RecentOrdersTable'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { OwnerFilter } from '@/components/OwnerFilter'
+import { getCurrentUser } from '@/lib/auth'
 
 export function DashboardPage() {
   const [chartTab, setChartTab] = useState<'day' | 'month'>('day')
-  const { data: stats, isLoading } = useStats()
+  const [ownerIdFilter, setOwnerIdFilter] = useState<number | undefined>(undefined)
+  const isAdmin = getCurrentUser()?.role === 'ADMIN'
+  const { data: stats, isLoading } = useStats(isAdmin ? ownerIdFilter : undefined)
 
   return (
     <div className="space-y-6">
       <PageHeader title="Dashboard" />
+
+      {isAdmin && (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Người dùng:</span>
+          <OwnerFilter value={ownerIdFilter} onChange={setOwnerIdFilter} />
+        </div>
+      )}
 
       {/* Row 1: Stat cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">

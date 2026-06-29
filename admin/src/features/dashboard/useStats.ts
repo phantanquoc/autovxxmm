@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { getCurrentUser } from '@/lib/auth'
 
 interface StatsData {
   bots: { total: number; online: number }
@@ -7,10 +8,19 @@ interface StatsData {
   tradeLogs: { total: number; last24h: number }
 }
 
-export function useStats() {
+export function useStats(ownerId?: number) {
+  const role = getCurrentUser()?.role
+  const isAdmin = role === 'ADMIN'
+
+  const url = isAdmin
+    ? ownerId !== undefined
+      ? `/admin/stats?ownerId=${ownerId}`
+      : '/admin/stats'
+    : '/me/stats'
+
   return useQuery({
-    queryKey: ['stats'],
-    queryFn: () => api<StatsData>('/admin/stats'),
+    queryKey: ['stats', url],
+    queryFn: () => api<StatsData>(url),
     refetchInterval: 30000,
   })
 }

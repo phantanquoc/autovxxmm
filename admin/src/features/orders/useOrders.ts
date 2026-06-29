@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, apiList } from '@/lib/api'
 import { buildQS, QueryParams } from '@/lib/buildQS'
+import { getCurrentUser } from '@/lib/auth'
 
 export interface Order {
   id: number
@@ -24,10 +25,24 @@ export interface Order {
   updatedAt: string
 }
 
-export function useOrders(p: QueryParams) {
+export interface OrderListParams extends QueryParams {
+  ownerId?: number
+}
+
+export function useOrders(p: OrderListParams) {
+  const role = getCurrentUser()?.role
+  const isAdmin = role === 'ADMIN'
+  const basePath = isAdmin ? '/admin/orders' : '/me/orders'
+
+  const params: OrderListParams = { ...p }
+  if (isAdmin && p.ownerId !== undefined) {
+    params.filter = { ...(params.filter as Record<string, unknown>), ownerId: p.ownerId }
+  }
+  delete params.ownerId
+
   return useQuery({
-    queryKey: ['orders', p],
-    queryFn: () => apiList<Order>(`/admin/orders?${buildQS(p)}`),
+    queryKey: ['orders', basePath, params],
+    queryFn: () => apiList<Order>(`${basePath}?${buildQS(params)}`),
     refetchInterval: 15000,
   })
 }
@@ -35,7 +50,7 @@ export function useOrders(p: QueryParams) {
 export function useOrderDelete() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => api(`/admin/orders/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: number) => api(`/me/orders/${id}`, { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['orders'] }),
   })
 }

@@ -1,7 +1,8 @@
 import { createHashRouter } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
-import { AuthGuard } from '@/features/auth/AuthGuard'
+import { AuthGuard, AdminOnlyRoute } from '@/features/auth/AuthGuard'
 import { LoginPage } from '@/features/auth/LoginPage'
+import { RegisterPage } from '@/features/auth/RegisterPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { BotListPage } from '@/features/bots/BotListPage'
 import { OrderListPage } from '@/features/orders/OrderListPage'
@@ -15,6 +16,7 @@ import { ErrorBoundary } from '@/features/error/ErrorBoundary'
 
 export const router = createHashRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/register', element: <RegisterPage /> },
   {
     element: (
       <AuthGuard>
@@ -27,8 +29,22 @@ export const router = createHashRouter([
       { path: '/bots', element: <BotListPage /> },
       { path: '/orders', element: <OrderListPage /> },
       { path: '/trade-logs', element: <TradeLogListPage /> },
-      { path: '/servers', element: <ServerListPage /> },
-      { path: '/users', element: <UserListPage /> },
+      {
+        path: '/servers',
+        element: (
+          <AdminOnlyRoute>
+            <ServerListPage />
+          </AdminOnlyRoute>
+        ),
+      },
+      {
+        path: '/users',
+        element: (
+          <AdminOnlyRoute>
+            <UserListPage />
+          </AdminOnlyRoute>
+        ),
+      },
       { path: '/blocks', element: <BlockListPage /> },
       { path: '/settings', element: <SettingsPage /> },
       { path: '*', element: <NotFound /> },
