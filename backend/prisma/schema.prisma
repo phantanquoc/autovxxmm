@@ -22,14 +22,18 @@ enum BotStatus {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  username  String   @unique
-  password  String
-  role      Role     @default(USER)
-  enabled   Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  sessions  ClientSyncState[]
+  id         Int      @id @default(autoincrement())
+  username   String   @unique
+  password   String
+  role       Role     @default(USER)
+  enabled    Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  sessions   ClientSyncState[]
+  bots       Bot[]
+  orders     Order[]
+  tradeLogs  TradeLog[]
+  blocks     Block[]
 }
 
 model Server {
@@ -43,6 +47,7 @@ model Server {
 
 model Bot {
   id            Int       @id @default(autoincrement())
+  ownerId       Int
   serverId      Int
   account       String
   password      String
@@ -71,6 +76,7 @@ model Bot {
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
+  owner         User      @relation(fields: [ownerId], references: [id], onDelete: Restrict)
   server        Server    @relation(fields: [serverId], references: [id])
   orders        Order[]
   reassignments BotReassignment[]
@@ -78,6 +84,8 @@ model Bot {
   @@index([serverId, deletedAt])
   @@index([client, deletedAt])
   @@index([updatedAt])
+  @@index([ownerId, deletedAt])
+  @@index([ownerId, client, deletedAt])
 }
 
 model BotReassignment {
@@ -95,6 +103,7 @@ model BotReassignment {
 
 model Order {
   id          Int       @id @default(autoincrement())
+  ownerId     Int
   serverId    Int
   botId       Int
   client      Int       @default(0)
@@ -117,15 +126,19 @@ model Order {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
+  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Restrict)
   botEntity   Bot       @relation(fields: [botId], references: [id])
 
   @@index([botId, status])
   @@index([serverId, status])
   @@index([updatedAt])
+  @@index([ownerId, status, deletedAt])
+  @@index([ownerId, updatedAt])
 }
 
 model TradeLog {
   id          BigInt   @id @default(autoincrement())
+  ownerId     Int
   serverId    Int
   name        String
   customer    String
@@ -138,18 +151,24 @@ model TradeLog {
   timeStop    BigInt
   createdAt   DateTime @default(now())
 
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+
   @@index([serverId, customer])
   @@index([createdAt])
+  @@index([ownerId, createdAt])
 }
 
 model Block {
   id        Int      @id @default(autoincrement())
+  ownerId   Int
   serverId  Int
   name      String
   reason    String?
   createdAt DateTime @default(now())
 
-  @@unique([serverId, name])
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+
+  @@unique([ownerId, serverId, name])
 }
 
 // Mỗi (user, client) duy trì timestamp riêng cho từng loại change.

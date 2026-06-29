@@ -1,17 +1,15 @@
 import { Router } from 'express';
 import { prisma } from '../../lib/prisma.js';
-import { authRequired } from '../../middleware/auth.js';
-import { adminRequired } from '../../middleware/admin.js';
+import { getOwnerScope } from '../../lib/scope.js';
 import { parseListQuery, setRange } from '../../lib/list.js';
-import { parseAdminOwnerFilter } from '../../lib/scope.js';
 import { notFound } from '../../lib/errors.js';
 
 const router = Router();
-router.use(authRequired, adminRequired);
 
 router.get('/', async (req, res) => {
+  const ownerId = getOwnerScope(req);
   const p = parseListQuery(req);
-  const and: Record<string, unknown>[] = [{ deletedAt: null }];
+  const and: Record<string, unknown>[] = [{ deletedAt: null }, { ownerId }];
   if (p.q)
     and.push({
       OR: [
@@ -22,9 +20,6 @@ router.get('/', async (req, res) => {
   if (p.filters.serverId) and.push({ serverId: Number(p.filters.serverId) });
   if (p.filters.botId) and.push({ botId: Number(p.filters.botId) });
   if (p.filters.status) and.push({ status: Number(p.filters.status) });
-
-  const ownerId = parseAdminOwnerFilter(req);
-  if (ownerId !== undefined) and.push({ ownerId });
 
   const where = { AND: and };
   const [total, items] = await Promise.all([
@@ -41,9 +36,10 @@ router.get('/', async (req, res) => {
 });
 
 router.get('/:id', async (req, res) => {
+  const ownerId = getOwnerScope(req);
   const id = Number(req.params.id);
   const order = await prisma.order.findUnique({ where: { id } });
-  if (!order) throw notFound();
+  if (!order || order.ownerId !== ownerId) throw notFound();
   res.json(order);
 });
 

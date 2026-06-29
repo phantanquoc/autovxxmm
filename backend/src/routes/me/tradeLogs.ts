@@ -1,17 +1,14 @@
 import { Router } from 'express';
 import { prisma } from '../../lib/prisma.js';
-import { authRequired } from '../../middleware/auth.js';
-import { adminRequired } from '../../middleware/admin.js';
+import { getOwnerScope } from '../../lib/scope.js';
 import { parseListQuery, setRange } from '../../lib/list.js';
-import { parseAdminOwnerFilter } from '../../lib/scope.js';
-import { notFound } from '../../lib/errors.js';
 
 const router = Router();
-router.use(authRequired, adminRequired);
 
 router.get('/', async (req, res) => {
+  const ownerId = getOwnerScope(req);
   const p = parseListQuery(req);
-  const and: Record<string, unknown>[] = [];
+  const and: Record<string, unknown>[] = [{ ownerId }];
   if (p.q)
     and.push({
       OR: [
@@ -22,11 +19,7 @@ router.get('/', async (req, res) => {
   if (p.filters.serverId) and.push({ serverId: Number(p.filters.serverId) });
   if (p.filters.type) and.push({ type: Number(p.filters.type) });
 
-  const ownerId = parseAdminOwnerFilter(req);
-  if (ownerId !== undefined) and.push({ ownerId });
-
-  const where = and.length ? { AND: and } : {};
-
+  const where = { AND: and };
   const [total, items] = await Promise.all([
     prisma.tradeLog.count({ where }),
     prisma.tradeLog.findMany({
@@ -38,13 +31,6 @@ router.get('/', async (req, res) => {
   ]);
   setRange(res, 'tradeLogs', p.start, items.length, total);
   res.json(items);
-});
-
-router.get('/:id', async (req, res) => {
-  const id = BigInt(req.params.id);
-  const log = await prisma.tradeLog.findUnique({ where: { id } });
-  if (!log) throw notFound();
-  res.json(log);
 });
 
 export default router;

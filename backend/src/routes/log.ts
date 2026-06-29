@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { authRequired } from '../middleware/auth.js';
 import { noContent } from '../lib/sync.js';
+import { getOwnerScope } from '../lib/scope.js';
 
 const router = Router();
 
@@ -21,6 +22,7 @@ const tradeBody = z.object({
 
 router.put('/trade', authRequired, async (req, res) => {
   const b = tradeBody.parse(req.body);
+  const ownerId = getOwnerScope(req);
   await prisma.tradeLog.create({
     data: {
       serverId: b.serverId,
@@ -33,6 +35,7 @@ router.put('/trade', authRequired, async (req, res) => {
       type: b.type,
       timeStart: BigInt(b.timeStart),
       timeStop: BigInt(b.timeStop),
+      ownerId,
     },
   });
   noContent(res);

@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { signJwt } from '../lib/jwt.js';
-import { unauthorized } from '../lib/errors.js';
+import { unauthorized, badRequest } from '../lib/errors.js';
 
 const router = Router();
 
@@ -19,6 +19,31 @@ router.post('/login', async (req, res) => {
 
   const ok = await bcrypt.compare(body.password, user.password);
   if (!ok) throw unauthorized('Sai tài khoản hoặc mật khẩu');
+
+  const jwt = signJwt({ sub: user.id, username: user.username, role: user.role });
+  res.json({ jwt });
+});
+
+const registerBody = z.object({
+  username: z.string().min(3),
+  password: z.string().min(6),
+});
+
+router.post('/register', async (req, res) => {
+  const body = registerBody.parse(req.body);
+
+  const existing = await prisma.user.findUnique({ where: { username: body.username } });
+  if (existing) throw badRequest('Username đã tồn tại');
+
+  const hashed = await bcrypt.hash(body.password, 10);
+  const user = await prisma.user.create({
+    data: {
+      username: body.username,
+      password: hashed,
+      role: 'USER',
+      enabled: true,
+    },
+  });
 
   const jwt = signJwt({ sub: user.id, username: user.username, role: user.role });
   res.json({ jwt });

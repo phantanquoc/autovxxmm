@@ -4,6 +4,7 @@ import { BotStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { authRequired, readClient } from '../middleware/auth.js';
 import { getAuthContext, getSyncState, noContent } from '../lib/sync.js';
+import { getOwnerScope } from '../lib/scope.js';
 import { badRequest } from '../lib/errors.js';
 
 const router = Router();
@@ -54,19 +55,20 @@ function botToJson(b: {
   };
 }
 
-function whereForClient(mode: Mode, client: number) {
-  if (mode === 'normal') return { deletedAt: null };
-  return { deletedAt: null, client };
+function whereForClient(mode: Mode, client: number, ownerId: number) {
+  if (mode === 'normal') return { deletedAt: null, ownerId };
+  return { deletedAt: null, client, ownerId };
 }
 
 // Initial full sync.
 router.get('/:mode', authRequired, readClient, async (req, res) => {
   const { mode, client } = await modeFilter(req);
   const ctx = getAuthContext(req);
+  const ownerId = getOwnerScope(req);
   const now = new Date();
 
   const bots = await prisma.bot.findMany({
-    where: whereForClient(mode, client),
+    where: whereForClient(mode, client, ownerId),
     orderBy: { id: 'asc' },
   });
 
@@ -98,9 +100,10 @@ router.get('/:mode', authRequired, readClient, async (req, res) => {
 router.get('/:mode/check-update', authRequired, readClient, async (req, res) => {
   const { mode, client } = await modeFilter(req);
   const ctx = getAuthContext(req);
+  const ownerId = getOwnerScope(req);
   const state = await getSyncState(ctx.userId, client);
 
-  const baseWhere = whereForClient(mode, client);
+  const baseWhere = whereForClient(mode, client, ownerId);
 
   const [hasNewBots, hasUpdatedBots, hasDeletedBots, reassignedOut, reassignedIn] = await Promise.all([
     prisma.bot.count({ where: { ...baseWhere, createdAt: { gt: state.newBotsAt } } }),
@@ -109,8 +112,8 @@ router.get('/:mode/check-update', authRequired, readClient, async (req, res) => 
     }),
     prisma.bot.count({
       where: mode === 'normal'
-        ? { deletedAt: { gt: state.deletedBotsAt } }
-        : { deletedAt: { gt: state.deletedBotsAt }, client },
+        ? { ownerId, deletedAt: { gt: state.deletedBotsAt } }
+        : { ownerId, deletedAt: { gt: state.deletedBotsAt }, client },
     }),
     mode === 'split'
       ? prisma.botReassignment.count({
@@ -136,11 +139,12 @@ router.get('/:mode/check-update', authRequired, readClient, async (req, res) => 
 router.get('/:mode/new', authRequired, readClient, async (req, res) => {
   const { mode, client } = await modeFilter(req);
   const ctx = getAuthContext(req);
+  const ownerId = getOwnerScope(req);
   const state = await getSyncState(ctx.userId, client);
   const now = new Date();
 
   const bots = await prisma.bot.findMany({
-    where: { ...whereForClient(mode, client), createdAt: { gt: state.newBotsAt } },
+    where: { ...whereForClient(mode, client, ownerId), createdAt: { gt: state.newBotsAt } },
     orderBy: { id: 'asc' },
   });
 
@@ -155,12 +159,13 @@ router.get('/:mode/new', authRequired, readClient, async (req, res) => {
 router.get('/:mode/updated', authRequired, readClient, async (req, res) => {
   const { mode, client } = await modeFilter(req);
   const ctx = getAuthContext(req);
+  const ownerId = getOwnerScope(req);
   const state = await getSyncState(ctx.userId, client);
   const now = new Date();
 
   const bots = await prisma.bot.findMany({
     where: {
-      ...whereForClient(mode, client),
+      ...whereForClient(mode, client, ownerId),
       updatedAt: { gt: state.updatedBotsAt },
       createdAt: { lte: state.newBotsAt },
     },
@@ -178,13 +183,14 @@ router.get('/:mode/updated', authRequired, readClient, async (req, res) => {
 router.get('/:mode/deleted', authRequired, readClient, async (req, res) => {
   const { mode, client } = await modeFilter(req);
   const ctx = getAuthContext(req);
+  const ownerId = getOwnerScope(req);
   const state = await getSyncState(ctx.userId, client);
   const now = new Date();
 
   const bots = await prisma.bot.findMany({
     where: mode === 'normal'
-      ? { deletedAt: { gt: state.deletedBotsAt } }
-      : { deletedAt: { gt: state.deletedBotsAt }, client },
+      ? { ownerId, deletedAt: { gt: state.deletedBotsAt } }
+      : { ownerId, deletedAt: { gt: state.deletedBotsAt }, client },
     select: { id: true },
   });
 
@@ -205,11 +211,17 @@ router.get('/:mode/changed/delete', authRequired, readClient, async (req, res) =
     return;
   }
   const ctx = getAuthContext(req);
+  const ownerId = getOwnerScope(req);
   const state = await getSyncState(ctx.userId, client);
   const now = new Date();
 
+  // Only return reassignments for bots owned by the caller
   const rows = await prisma.botReassignment.findMany({
-    where: { fromClient: client, createdAt: { gt: state.reassignedOutAt } },
+    where: {
+      fromClient: client,
+      createdAt: { gt: state.reassignedOutAt },
+      bot: { ownerId },
+    },
     select: { botId: true },
   });
 
@@ -228,18 +240,23 @@ router.get('/:mode/changed/new', authRequired, readClient, async (req, res) => {
     return;
   }
   const ctx = getAuthContext(req);
+  const ownerId = getOwnerScope(req);
   const state = await getSyncState(ctx.userId, client);
   const now = new Date();
 
   const rows = await prisma.botReassignment.findMany({
-    where: { toClient: client, createdAt: { gt: state.reassignedInAt } },
+    where: {
+      toClient: client,
+      createdAt: { gt: state.reassignedInAt },
+      bot: { ownerId },
+    },
     orderBy: { createdAt: 'asc' },
   });
 
   const botIds = [...new Set(rows.map((r) => r.botId))];
   const bots = botIds.length
     ? await prisma.bot.findMany({
-        where: { id: { in: botIds }, deletedAt: null, client },
+        where: { id: { in: botIds }, ownerId, deletedAt: null, client },
       })
     : [];
 
@@ -267,6 +284,7 @@ const observePayload = z.array(
 
 router.put('/:mode', authRequired, readClient, async (req, res) => {
   await modeFilter(req); // validate
+  const ownerId = getOwnerScope(req);
   const items = observePayload.parse(req.body);
   if (items.length === 0) {
     noContent(res);
@@ -275,8 +293,8 @@ router.put('/:mode', authRequired, readClient, async (req, res) => {
   await prisma.$transaction(
     items.map((it) =>
       prisma.bot.updateMany({
-        // updateMany để không throw nếu bot đã bị xoá
-        where: { id: it.id },
+        // updateMany để không throw nếu bot đã bị xoá; ownerId filter ensures cross-owner safety
+        where: { id: it.id, ownerId },
         data: {
           obsName: it.name,
           obsLevel: it.level,
@@ -294,16 +312,16 @@ router.put('/:mode', authRequired, readClient, async (req, res) => {
 
 router.put('/:mode/exit', authRequired, readClient, async (req, res) => {
   await modeFilter(req);
-  // Client tắt — set tất cả bot trong nhóm sang OFFLINE.
   const ctx = getAuthContext(req);
+  const ownerId = getOwnerScope(req);
   if (req.params.mode === 'split') {
     await prisma.bot.updateMany({
-      where: { client: req.client, deletedAt: null },
+      where: { ownerId, client: req.client, deletedAt: null },
       data: { obsStatus: BotStatus.OFFLINE },
     });
   } else {
     await prisma.bot.updateMany({
-      where: { deletedAt: null },
+      where: { ownerId, deletedAt: null },
       data: { obsStatus: BotStatus.OFFLINE },
     });
   }
