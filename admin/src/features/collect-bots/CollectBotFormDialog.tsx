@@ -2,9 +2,9 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Bot, useBotMutation } from './useBots'
+import { CollectBot, useCollectBotMutation } from './useCollectBots'
 import { useResourceServers } from '@/features/servers/useServers'
-import { NINJA_MAPS } from './mapData'
+import { NINJA_MAPS } from '@/features/bots/mapData'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,6 +18,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 
+// Collect bots do NOT have playFee or typeLuckyDraw
 const schema = z.object({
   serverId: z.number().int().min(1),
   account: z.string().min(1),
@@ -31,21 +32,18 @@ const schema = z.object({
   chat: z.string().default(''),
   sms: z.string().default(''),
   enable: z.boolean().default(true),
-  playFee: z.number().int().min(0).max(100).default(0),
-  typeLuckyDraw: z.number().int().min(0).max(1).default(0),
-  client: z.number().int().min(0).default(0),
 })
 
 type FormData = z.infer<typeof schema>
 
-interface BotFormDialogProps {
+interface CollectBotFormDialogProps {
   open: boolean
   onClose: () => void
-  initialData?: Bot
+  initialData?: CollectBot
 }
 
-export function BotFormDialog({ open, onClose, initialData }: BotFormDialogProps) {
-  const mutation = useBotMutation()
+export function CollectBotFormDialog({ open, onClose, initialData }: CollectBotFormDialogProps) {
+  const mutation = useCollectBotMutation()
   const { data: serverResult } = useResourceServers()
   const servers = serverResult?.items ?? []
 
@@ -65,17 +63,14 @@ export function BotFormDialog({ open, onClose, initialData }: BotFormDialogProps
           chat: initialData.chat,
           sms: initialData.sms,
           enable: initialData.enable,
-          playFee: initialData.playFee,
-          typeLuckyDraw: initialData.typeLuckyDraw,
-          client: initialData.client,
         }
-      : { enable: true, playFee: 0, typeLuckyDraw: 0, client: 0 },
+      : { enable: true },
   })
 
   async function onSubmit(data: FormData) {
     try {
       await mutation.mutateAsync(initialData ? { ...data, id: initialData.id } : data)
-      toast.success(initialData ? 'Đã cập nhật bot' : 'Đã thêm bot')
+      toast.success(initialData ? 'Đã cập nhật bot gom xu' : 'Đã thêm bot gom xu')
       onClose()
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Có lỗi xảy ra')
@@ -86,11 +81,10 @@ export function BotFormDialog({ open, onClose, initialData }: BotFormDialogProps
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{initialData ? 'Chỉnh sửa bot' : 'Thêm bot mới'}</DialogTitle>
+          <DialogTitle>{initialData ? 'Chỉnh sửa bot gom xu' : 'Thêm bot gom xu mới'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            {/* Left column */}
             <div className="space-y-3">
               <div className="space-y-1">
                 <Label>Server</Label>
@@ -129,13 +123,9 @@ export function BotFormDialog({ open, onClose, initialData }: BotFormDialogProps
               <div className="space-y-1">
                 <Label>Tên nhân vật quản lý</Label>
                 <Input {...register('manager')} placeholder="Tên char trong game" />
-                <p className="text-[11px] text-muted-foreground">
-                  Bot chỉ chấp nhận mời party / giao dịch xu từ nhân vật in-game có tên này.
-                </p>
               </div>
             </div>
 
-            {/* Right column */}
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
@@ -146,12 +136,12 @@ export function BotFormDialog({ open, onClose, initialData }: BotFormDialogProps
                     render={({ field }) => (
                       <>
                         <Input
-                          list="map-list"
+                          list="collect-map-list"
                           type="number"
                           value={field.value ?? 0}
                           onChange={e => field.onChange(Number(e.target.value))}
                         />
-                        <datalist id="map-list">
+                        <datalist id="collect-map-list">
                           {NINJA_MAPS.map(m => (
                             <option key={m.id} value={m.id}>{m.name}</option>
                           ))}
@@ -173,47 +163,9 @@ export function BotFormDialog({ open, onClose, initialData }: BotFormDialogProps
                   <Input type="number" {...register('posY', { valueAsNumber: true })} />
                 </div>
               </div>
-              <div className="space-y-1">
-                <Label>Phí (%)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  {...register('playFee', { valueAsNumber: true })}
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Phần trăm phí trên số xu thắng (0–100).
-                </p>
-              </div>
-              <div className="space-y-1">
-                <Label>Loại vòng xoay</Label>
-                <Controller
-                  name="typeLuckyDraw"
-                  control={control}
-                  render={({ field }) => (
-                    <Select
-                      value={String(field.value ?? 0)}
-                      onValueChange={v => field.onChange(Number(v))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">VIP</SelectItem>
-                        <SelectItem value="1">Thường</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Client</Label>
-                <Input type="number" min={0} {...register('client', { valueAsNumber: true })} />
-              </div>
             </div>
           </div>
 
-          {/* Full width fields */}
           <div className="space-y-1">
             <Label>Chat</Label>
             <textarea

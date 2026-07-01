@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { useBots, useBotMutation, useBotDelete, Bot } from './useBots'
 import { BotFormDialog } from './BotFormDialog'
 import { NINJA_MAPS } from './mapData'
-import { useServers } from '@/features/servers/useServers'
+import { useResourceServers } from '@/features/servers/useServers'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -59,7 +59,7 @@ export function BotListPage() {
 
   const isAdmin = getCurrentUser()?.role === 'ADMIN'
 
-  const { data: serverResult } = useServers()
+  const { data: serverResult } = useResourceServers()
   const servers = serverResult?.items ?? []
   const serverOptions = servers.map(s => ({ value: String(s.id), label: s.name }))
 
@@ -101,7 +101,7 @@ export function BotListPage() {
   }
 
   async function toggleEnable(id: number, value: boolean) {
-    if (isAdmin) return // admin cannot mutate
+    if (isAdmin) return // admin cannot mutate other users' bots via /me endpoint
     try {
       await mutation.mutateAsync({ id, enable: value })
     } catch (err: unknown) {

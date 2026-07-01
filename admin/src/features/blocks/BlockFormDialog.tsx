@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { useBlockCreate } from './useBlocks'
-import { useServers } from '@/features/servers/useServers'
+import { useResourceServers } from '@/features/servers/useServers'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -24,7 +24,7 @@ interface BlockFormDialogProps {
 }
 
 export function BlockFormDialog({ open, onClose }: BlockFormDialogProps) {
-  const { data: serverResult } = useServers()
+  const { data: serverResult } = useResourceServers()
   const servers = serverResult?.items ?? []
   const createMutation = useBlockCreate()
 

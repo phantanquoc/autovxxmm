@@ -26,6 +26,9 @@ import meOrders from './routes/me/orders.js';
 import meTradeLogs from './routes/me/tradeLogs.js';
 import meBlocks from './routes/me/blocks.js';
 import meStats from './routes/me/stats.js';
+import meCollectBots from './routes/me/collectBots.js';
+import meCollect from './routes/me/collect.js';
+import clientCollect from './routes/clientCollect.js';
 
 patchBigIntJson();
 
@@ -45,6 +48,7 @@ app.use('/api', authRoutes);
 app.use('/api/resource', resourceRoutes);
 app.use('/api/client/bots', botRoutes);
 app.use('/api/client/orders', orderRoutes);
+app.use('/api/client/collect', authRequired, clientCollect);
 app.use('/api/log', logRoutes);
 
 app.use('/api/admin/users', adminUsers);
@@ -64,6 +68,8 @@ meRouter.use('/orders', meOrders);
 meRouter.use('/tradeLogs', meTradeLogs);
 meRouter.use('/blocks', meBlocks);
 meRouter.use('/stats', meStats);
+meRouter.use('/collect-bots', meCollectBots);
+meRouter.use('/collect', meCollect);
 app.use('/api/me', meRouter);
 
 app.use(errorHandler);

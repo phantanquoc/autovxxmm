@@ -5,6 +5,7 @@ import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { BotListPage } from '@/features/bots/BotListPage'
+import { CollectBotsListPage } from '@/features/collect-bots/CollectBotsListPage'
 import { OrderListPage } from '@/features/orders/OrderListPage'
 import { TradeLogListPage } from '@/features/trade-logs/TradeLogListPage'
 import { ServerListPage } from '@/features/servers/ServerListPage'
@@ -27,6 +28,7 @@ export const router = createHashRouter([
     children: [
       { path: '/', element: <DashboardPage /> },
       { path: '/bots', element: <BotListPage /> },
+      { path: '/collect-bots', element: <CollectBotsListPage /> },
       { path: '/orders', element: <OrderListPage /> },
       { path: '/trade-logs', element: <TradeLogListPage /> },
       {

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api, apiList } from '@/lib/api'
+import { api, apiList, type ListResult } from '@/lib/api'
 import { buildQS, QueryParams } from '@/lib/buildQS'
 
 export interface Server {
@@ -15,6 +15,19 @@ export function useServers(params?: Partial<QueryParams>) {
   return useQuery({
     queryKey: ['servers', p],
     queryFn: () => apiList<Server>(`/admin/servers?${buildQS(p)}`),
+  })
+}
+
+// Public-to-any-authenticated-user list of servers, served by /api/resource/server.
+// Use this in any USER-facing form/dropdown — /admin/servers is ADMIN-only.
+export function useResourceServers() {
+  return useQuery({
+    queryKey: ['resource-servers'],
+    queryFn: async (): Promise<ListResult<Server>> => {
+      const items = await api<Server[]>('/resource/server')
+      return { items, total: items.length }
+    },
+    staleTime: 5 * 60 * 1000,
   })
 }
 

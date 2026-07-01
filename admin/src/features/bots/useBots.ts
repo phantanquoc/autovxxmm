@@ -51,7 +51,8 @@ export function useBots(p: BotListParams) {
   return useQuery({
     queryKey: ['bots', basePath, params],
     queryFn: () => apiList<Bot>(`${basePath}?${buildQS(params)}`),
-    refetchInterval: 10000,
+    refetchInterval: 5000,
+    refetchIntervalInBackground: true,
   })
 }
 

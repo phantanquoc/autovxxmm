@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTradeLogs, TRADE_TYPE_MAP } from './useTradeLogs'
-import { useServers } from '@/features/servers/useServers'
+import { useResourceServers } from '@/features/servers/useServers'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -24,7 +24,7 @@ export function TradeLogListPage() {
 
   const isAdmin = getCurrentUser()?.role === 'ADMIN'
 
-  const { data: serverResult } = useServers()
+  const { data: serverResult } = useResourceServers()
   const servers = serverResult?.items ?? []
   const serverOptions = servers.map(s => ({ value: String(s.id), label: s.name }))
 

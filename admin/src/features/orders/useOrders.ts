@@ -43,7 +43,8 @@ export function useOrders(p: OrderListParams) {
   return useQuery({
     queryKey: ['orders', basePath, params],
     queryFn: () => apiList<Order>(`${basePath}?${buildQS(params)}`),
-    refetchInterval: 15000,
+    refetchInterval: 8000,
+    refetchIntervalInBackground: true,
   })
 }
 

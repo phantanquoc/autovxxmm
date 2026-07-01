@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useOrders, Order } from './useOrders'
-import { useServers } from '@/features/servers/useServers'
+import { useResourceServers } from '@/features/servers/useServers'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
@@ -37,7 +37,7 @@ export function OrderListPage({ limit, hideHeader }: OrderListPageProps = {}) {
 
   const isAdmin = getCurrentUser()?.role === 'ADMIN'
 
-  const { data: serverResult } = useServers()
+  const { data: serverResult } = useResourceServers()
   const servers = serverResult?.items ?? []
 
   const filter: Record<string, unknown> = { ...filterValues }

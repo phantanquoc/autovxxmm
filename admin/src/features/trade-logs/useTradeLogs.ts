@@ -42,6 +42,8 @@ export function useTradeLogs(p: TradeLogListParams) {
   return useQuery({
     queryKey: ['tradeLogs', basePath, params],
     queryFn: () => apiList<TradeLog>(`${basePath}?${buildQS(params)}`),
+    refetchInterval: 15000,
+    refetchIntervalInBackground: true,
     staleTime: 10000,
   })
 }

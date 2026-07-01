@@ -3,7 +3,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useBlocks, useBlockDelete, Block } from './useBlocks'
 import { BlockFormDialog } from './BlockFormDialog'
-import { useServers } from '@/features/servers/useServers'
+import { useResourceServers } from '@/features/servers/useServers'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -21,7 +21,7 @@ export function BlockListPage() {
 
   const { data: blockResult, isLoading } = useBlocks({ ownerId: ownerIdFilter })
   const blocks = blockResult?.items ?? []
-  const { data: serverResult } = useServers()
+  const { data: serverResult } = useResourceServers()
   const servers = serverResult?.items ?? []
   const deleteMutation = useBlockDelete()
 

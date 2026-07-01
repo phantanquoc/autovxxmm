@@ -26,6 +26,25 @@ const passwordSchema = z.object({
 
 type PasswordForm = z.infer<typeof passwordSchema>
 
+// Collect settings schema — threshold must be > keep, both >= 0
+const collectSchema = z.object({
+  collectThreshold: z.number({ invalid_type_error: 'Nhập số' }).int().nonnegative('Phải >= 0'),
+  collectKeep: z.number({ invalid_type_error: 'Nhập số' }).int().nonnegative('Phải >= 0'),
+}).refine(d => d.collectThreshold > d.collectKeep, {
+  message: 'Ngưỡng phải lớn hơn Để lại',
+  path: ['collectThreshold'],
+})
+
+type CollectForm = z.infer<typeof collectSchema>
+
+interface ProfileData {
+  id: number
+  username: string
+  role: string
+  collectThreshold: number
+  collectKeep: number
+}
+
 export function SettingsPage() {
   const { theme, toggleTheme } = useTheme()
   const currentUser = getCurrentUser()
@@ -35,8 +54,25 @@ export function SettingsPage() {
     queryFn: () => api<{ status: string; time: number }>('/health'),
   })
 
+  const { data: profile } = useQuery({
+    queryKey: ['me-profile'],
+    queryFn: () => api<ProfileData>('/me/profile'),
+  })
+
   const { register, handleSubmit, reset, formState: { errors } } = useForm<PasswordForm>({
     resolver: zodResolver(passwordSchema),
+  })
+
+  const {
+    register: registerCollect,
+    handleSubmit: handleSubmitCollect,
+    formState: { errors: collectErrors },
+    reset: resetCollect,
+  } = useForm<CollectForm>({
+    resolver: zodResolver(collectSchema),
+    values: profile
+      ? { collectThreshold: profile.collectThreshold, collectKeep: profile.collectKeep }
+      : undefined,
   })
 
   async function onChangePassword(data: PasswordForm) {
@@ -56,6 +92,18 @@ export function SettingsPage() {
     }
   }
 
+  async function onSaveCollect(data: CollectForm) {
+    try {
+      await api('/me/profile', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      })
+      toast.success('Đã lưu cài đặt gom xu')
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Có lỗi xảy ra')
+    }
+  }
+
   return (
     <div>
       <PageHeader title="Cài đặt" />
@@ -63,6 +111,7 @@ export function SettingsPage() {
       <Tabs defaultValue="profile">
         <TabsList className="mb-4">
           <TabsTrigger value="profile">Hồ sơ</TabsTrigger>
+          <TabsTrigger value="collect">Gom xu</TabsTrigger>
           <TabsTrigger value="appearance">Giao diện</TabsTrigger>
           <TabsTrigger value="system">Hệ thống</TabsTrigger>
         </TabsList>
@@ -94,6 +143,47 @@ export function SettingsPage() {
                   {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>}
                 </div>
                 <Button type="submit">Cập nhật mật khẩu</Button>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="collect">
+          <Card>
+            <CardHeader>
+              <CardTitle>Gom xu</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmitCollect(onSaveCollect)} className="space-y-4 max-w-sm">
+                <div className="space-y-1">
+                  <Label>Ngưỡng X (xu)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    {...registerCollect('collectThreshold', { valueAsNumber: true })}
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Bot có xu vượt ngưỡng này sẽ được đưa vào danh sách gom.
+                  </p>
+                  {collectErrors.collectThreshold && (
+                    <p className="text-xs text-destructive">{collectErrors.collectThreshold.message}</p>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <Label>Để lại Y (xu)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    {...registerCollect('collectKeep', { valueAsNumber: true })}
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Số xu giữ lại sau khi gom (phải nhỏ hơn ngưỡng X).
+                  </p>
+                  {collectErrors.collectKeep && (
+                    <p className="text-xs text-destructive">{collectErrors.collectKeep.message}</p>
+                  )}
+                </div>
+                <Button type="submit">Lưu</Button>
               </form>
             </CardContent>
           </Card>

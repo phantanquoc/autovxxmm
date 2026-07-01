@@ -1,6 +1,6 @@
 import { Router, type Request } from 'express';
 import { z } from 'zod';
-import { BotStatus } from '@prisma/client';
+import { BotStatus, BotRole } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { authRequired, readClient } from '../middleware/auth.js';
 import { getAuthContext, getSyncState, noContent } from '../lib/sync.js';
@@ -56,9 +56,172 @@ function botToJson(b: {
 }
 
 function whereForClient(mode: Mode, client: number, ownerId: number) {
-  if (mode === 'normal') return { deletedAt: null, ownerId };
-  return { deletedAt: null, client, ownerId };
+  if (mode === 'normal') return { deletedAt: null, ownerId, role: BotRole.ORDER };
+  return { deletedAt: null, client, ownerId, role: BotRole.ORDER };
 }
+
+// Observer push payload — shared by normal/split and collect PUT handlers
+const observePayload = z.array(
+  z.object({
+    id: z.number().int(),
+    name: z.string(),
+    level: z.number().int(),
+    clan: z.string().nullable(),
+    coin: z.number().int(),
+    gold: z.number().int(),
+    status: z.nativeEnum(BotStatus),
+    lastOnline: z.number().int().nonnegative(),
+  })
+);
+
+// ─── /api/client/bots/collect routes ────────────────────────────────────────
+// Registered BEFORE the /:mode wildcard so they take precedence.
+// Returns the caller's COLLECT bots in the same shape as /normal.
+// Option (b): separate /collect endpoint — less invasive to the normal/split logic.
+
+router.get('/collect', authRequired, readClient, async (req, res) => {
+  const ctx = getAuthContext(req);
+  const ownerId = getOwnerScope(req);
+  const now = new Date();
+
+  const bots = await prisma.bot.findMany({
+    where: { ownerId, role: BotRole.COLLECT, deletedAt: null },
+    orderBy: { id: 'asc' },
+  });
+
+  // Upsert a sync state entry for collect bots (client=0 since collect bots have no split mode)
+  await prisma.clientSyncState.upsert({
+    where: { userId_client: { userId: ctx.userId, client: 0 } },
+    update: { collectTasksAt: now, lastSeenAt: now },
+    create: { userId: ctx.userId, client: 0, collectTasksAt: now, lastSeenAt: now },
+  });
+
+  res.json(bots.map(botToJson));
+});
+
+router.get('/collect/check-update', authRequired, readClient, async (req, res) => {
+  const ctx = getAuthContext(req);
+  const ownerId = getOwnerScope(req);
+  const state = await getSyncState(ctx.userId, 0);
+  const now = new Date();
+
+  const [hasNewBots, hasUpdatedBots, hasDeletedBots] = await Promise.all([
+    prisma.bot.count({
+      where: { ownerId, role: BotRole.COLLECT, deletedAt: null, createdAt: { gt: state.newBotsAt } },
+    }),
+    prisma.bot.count({
+      where: {
+        ownerId, role: BotRole.COLLECT, deletedAt: null,
+        updatedAt: { gt: state.updatedBotsAt }, createdAt: { lte: state.newBotsAt },
+      },
+    }),
+    prisma.bot.count({
+      where: { ownerId, role: BotRole.COLLECT, deletedAt: { gt: state.deletedBotsAt } },
+    }),
+  ]);
+
+  await prisma.clientSyncState.update({
+    where: { userId_client: { userId: ctx.userId, client: 0 } },
+    data: { lastSeenAt: now },
+  });
+
+  res.json({
+    hasNewBots: hasNewBots > 0,
+    hasUpdatedBots: hasUpdatedBots > 0,
+    hasDeletedBots: hasDeletedBots > 0,
+    hasChangedClientBotsToDelete: false,
+    hasChangedClientNewBots: false,
+  });
+});
+
+router.get('/collect/new', authRequired, readClient, async (req, res) => {
+  const ctx = getAuthContext(req);
+  const ownerId = getOwnerScope(req);
+  const state = await getSyncState(ctx.userId, 0);
+  const now = new Date();
+
+  const bots = await prisma.bot.findMany({
+    where: { ownerId, role: BotRole.COLLECT, deletedAt: null, createdAt: { gt: state.newBotsAt } },
+    orderBy: { id: 'asc' },
+  });
+
+  await prisma.clientSyncState.update({
+    where: { userId_client: { userId: ctx.userId, client: 0 } },
+    data: { newBotsAt: now, updatedBotsAt: now, lastSeenAt: now },
+  });
+
+  res.json(bots.map(botToJson));
+});
+
+router.get('/collect/updated', authRequired, readClient, async (req, res) => {
+  const ctx = getAuthContext(req);
+  const ownerId = getOwnerScope(req);
+  const state = await getSyncState(ctx.userId, 0);
+  const now = new Date();
+
+  const bots = await prisma.bot.findMany({
+    where: {
+      ownerId, role: BotRole.COLLECT, deletedAt: null,
+      updatedAt: { gt: state.updatedBotsAt }, createdAt: { lte: state.newBotsAt },
+    },
+    orderBy: { id: 'asc' },
+  });
+
+  await prisma.clientSyncState.update({
+    where: { userId_client: { userId: ctx.userId, client: 0 } },
+    data: { updatedBotsAt: now, lastSeenAt: now },
+  });
+
+  res.json(bots.map(botToJson));
+});
+
+router.get('/collect/deleted', authRequired, readClient, async (req, res) => {
+  const ctx = getAuthContext(req);
+  const ownerId = getOwnerScope(req);
+  const state = await getSyncState(ctx.userId, 0);
+  const now = new Date();
+
+  const bots = await prisma.bot.findMany({
+    where: { ownerId, role: BotRole.COLLECT, deletedAt: { gt: state.deletedBotsAt } },
+    select: { id: true },
+  });
+
+  await prisma.clientSyncState.update({
+    where: { userId_client: { userId: ctx.userId, client: 0 } },
+    data: { deletedBotsAt: now, lastSeenAt: now },
+  });
+
+  res.json(bots.map((b) => b.id));
+});
+
+// Observer push for collect bots — same endpoint format as normal/split
+router.put('/collect', authRequired, readClient, async (req, res) => {
+  const ownerId = getOwnerScope(req);
+  const items = observePayload.parse(req.body);
+  if (items.length === 0) {
+    noContent(res);
+    return;
+  }
+  await prisma.$transaction(
+    items.map((it) =>
+      prisma.bot.updateMany({
+        where: { id: it.id, ownerId, role: BotRole.COLLECT },
+        data: {
+          obsName: it.name,
+          obsLevel: it.level,
+          obsClan: it.clan,
+          obsCoin: it.coin,
+          obsGold: it.gold,
+          obsStatus: it.status,
+          obsLastOnline: BigInt(it.lastOnline),
+        },
+      })
+    )
+  );
+  noContent(res);
+});
+
+// ─── End /collect routes ─────────────────────────────────────────────────────
 
 // Initial full sync.
 router.get('/:mode', authRequired, readClient, async (req, res) => {
@@ -112,8 +275,8 @@ router.get('/:mode/check-update', authRequired, readClient, async (req, res) => 
     }),
     prisma.bot.count({
       where: mode === 'normal'
-        ? { ownerId, deletedAt: { gt: state.deletedBotsAt } }
-        : { ownerId, deletedAt: { gt: state.deletedBotsAt }, client },
+        ? { ownerId, role: BotRole.ORDER, deletedAt: { gt: state.deletedBotsAt } }
+        : { ownerId, role: BotRole.ORDER, deletedAt: { gt: state.deletedBotsAt }, client },
     }),
     mode === 'split'
       ? prisma.botReassignment.count({
@@ -189,8 +352,8 @@ router.get('/:mode/deleted', authRequired, readClient, async (req, res) => {
 
   const bots = await prisma.bot.findMany({
     where: mode === 'normal'
-      ? { ownerId, deletedAt: { gt: state.deletedBotsAt } }
-      : { ownerId, deletedAt: { gt: state.deletedBotsAt }, client },
+      ? { ownerId, role: BotRole.ORDER, deletedAt: { gt: state.deletedBotsAt } }
+      : { ownerId, role: BotRole.ORDER, deletedAt: { gt: state.deletedBotsAt }, client },
     select: { id: true },
   });
 
@@ -256,7 +419,7 @@ router.get('/:mode/changed/new', authRequired, readClient, async (req, res) => {
   const botIds = [...new Set(rows.map((r) => r.botId))];
   const bots = botIds.length
     ? await prisma.bot.findMany({
-        where: { id: { in: botIds }, ownerId, deletedAt: null, client },
+        where: { id: { in: botIds }, ownerId, deletedAt: null, client, role: BotRole.ORDER },
       })
     : [];
 
@@ -267,20 +430,6 @@ router.get('/:mode/changed/new', authRequired, readClient, async (req, res) => {
 
   res.json(bots.map(botToJson));
 });
-
-// Observer push (10s/lần).
-const observePayload = z.array(
-  z.object({
-    id: z.number().int(),
-    name: z.string(),
-    level: z.number().int(),
-    clan: z.string().nullable(),
-    coin: z.number().int(),
-    gold: z.number().int(),
-    status: z.nativeEnum(BotStatus),
-    lastOnline: z.number().int().nonnegative(),
-  })
-);
 
 router.put('/:mode', authRequired, readClient, async (req, res) => {
   await modeFilter(req); // validate
@@ -294,7 +443,8 @@ router.put('/:mode', authRequired, readClient, async (req, res) => {
     items.map((it) =>
       prisma.bot.updateMany({
         // updateMany để không throw nếu bot đã bị xoá; ownerId filter ensures cross-owner safety
-        where: { id: it.id, ownerId },
+        // role=ORDER filter ensures COLLECT bots can only be updated via PUT /collect
+        where: { id: it.id, ownerId, role: BotRole.ORDER },
         data: {
           obsName: it.name,
           obsLevel: it.level,
@@ -316,12 +466,12 @@ router.put('/:mode/exit', authRequired, readClient, async (req, res) => {
   const ownerId = getOwnerScope(req);
   if (req.params.mode === 'split') {
     await prisma.bot.updateMany({
-      where: { ownerId, client: req.client, deletedAt: null },
+      where: { ownerId, role: BotRole.ORDER, client: req.client, deletedAt: null },
       data: { obsStatus: BotStatus.OFFLINE },
     });
   } else {
     await prisma.bot.updateMany({
-      where: { ownerId, deletedAt: null },
+      where: { ownerId, role: BotRole.ORDER, deletedAt: null },
       data: { obsStatus: BotStatus.OFFLINE },
     });
   }

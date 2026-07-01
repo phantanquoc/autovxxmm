@@ -34,12 +34,12 @@ The sidebar SHALL show different items depending on the JWT role of the active s
 
 For `role='ADMIN'`:
 - Main: Dashboard
-- Manage: Bot, Đơn hàng, Giao dịch xu, Block list
+- Manage: Bot, Bot gom xu, Đơn hàng, Giao dịch xu, Block list
 - System: Máy chủ, Người dùng, Cài đặt
 
 For any non-ADMIN role (USER):
 - Main: Dashboard
-- Manage: Bot, Đơn hàng, Giao dịch xu, Block list
+- Manage: Bot, Bot gom xu, Đơn hàng, Giao dịch xu, Block list
 - System: Cài đặt
 
 #### Scenario: ADMIN sidebar shows admin-only entries
@@ -49,6 +49,10 @@ For any non-ADMIN role (USER):
 #### Scenario: USER sidebar hides admin-only entries
 - **WHEN** a USER session renders the sidebar
 - **THEN** "Máy chủ" and "Người dùng" SHALL NOT appear; the rest of the menu structure SHALL match the role-specific list above
+
+#### Scenario: Bot gom xu entry is visible to both roles
+- **WHEN** any authenticated session (USER or ADMIN) renders the sidebar
+- **THEN** an entry labelled "Bot gom xu" SHALL appear under "Quản lý" / "Manage", linking to `#/collect-bots`
 
 ### Requirement: Feature hooks SHALL target the correct API base by role
 The data hooks for `bots`, `orders`, `trade-logs`, `blocks`, and the `dashboard` stats SHALL pick `/api/admin/<resource>` when the current JWT has `role='ADMIN'` and `/api/me/<resource>` otherwise. The same hooks SHALL pass ADMIN-only `ownerId` filters into admin requests when the UI sets them.

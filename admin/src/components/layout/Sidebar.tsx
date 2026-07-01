@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Bot, ShoppingCart, Coins, Ban, Server, Users, Settings,
-  ChevronsLeft, ChevronsRight, LogOut
+  ChevronsLeft, ChevronsRight, LogOut, Receipt
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { clearToken, getCurrentUser } from '@/lib/auth'
@@ -23,8 +23,9 @@ const mainItems: NavItem[] = [
 
 const manageItems: NavItem[] = [
   { icon: Bot, to: '/bots', label: 'Bot' },
+  { icon: Coins, to: '/collect-bots', label: 'Bot gom xu' },
   { icon: ShoppingCart, to: '/orders', label: 'Đơn hàng' },
-  { icon: Coins, to: '/trade-logs', label: 'Giao dịch xu' },
+  { icon: Receipt, to: '/trade-logs', label: 'Giao dịch xu' },
   { icon: Ban, to: '/blocks', label: 'Block list' },
 ]
 
