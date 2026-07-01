@@ -125,6 +125,8 @@ public class Bot {
         CollectTrade trade = new CollectTrade(bot, screen);
         bot.setScreen(screen);
         bot.setTrade(trade);
+        bot.setObserver(new BotObserver(bot));
+        bot.createConnect();
         return bot;
     }
 
@@ -193,7 +195,10 @@ public class Bot {
             this.getParty().removeAllElements();
             this.getTrade().reset();
             this.friends.removeAllElements();
-            this.messageStream.clearLastParty();
+            // COLLECT bots are created without a MessageStream (see createBotCollect).
+            if (this.messageStream != null) {
+                this.messageStream.clearLastParty();
+            }
         }
         try {
             this.getTileMap().getvGo().removeAllElements();
@@ -202,7 +207,9 @@ public class Bot {
         catch (Exception exception) {
             // empty catch block
         }
-        this.messageStream.clearAllPrivateMessages();
+        if (this.messageStream != null) {
+            this.messageStream.clearAllPrivateMessages();
+        }
     }
 
     public String getServerIP() {

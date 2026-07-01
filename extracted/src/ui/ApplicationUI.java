@@ -88,8 +88,6 @@ extends JFrame {
     private JButton button_Setting;
     private JButton button_TransferCoin;
     private JButton button_ImportBotTransfer;
-    private JButton button_CollectCoin;
-    private JButton button_ImportBotCollect;
     private JScrollPane panel_Second_Left;
     private JPanel panel_Second_Right;
     private JScrollPane panel_Third_Left;
@@ -119,7 +117,6 @@ extends JFrame {
     private int totalPage = 0;
     private boolean pageChanged = false;
     private boolean botOrderChanged = false;
-    private boolean onCollectCoin = false;
     private boolean onTransferCoin = false;
 
     public ApplicationUI() {
@@ -247,60 +244,6 @@ extends JFrame {
                 catch (Exception ex) {
                     logger.log(Level.WARNING, ex.getMessage(), ex);
                     Application.error(this, ex.getMessage());
-                }
-            }
-        });
-        this.button_CollectCoin.addActionListener(e -> {
-            List<Bot> botCollects = BotService.getInstance().getBotCollects();
-            if (!this.onCollectCoin && botCollects.isEmpty()) {
-                Application.alert(this, "B\u1ea1n ch\u01b0a c\u00f3 t\u00e0i kho\u1ea3n gom xu n\u00e0o!");
-                return;
-            }
-            this.onCollectCoin = !this.onCollectCoin;
-            this.button_CollectCoin.setText(!this.onCollectCoin ? "Gom xu" : "D\u1eebng gom xu");
-            botCollects.forEach(bot -> bot.getScreen().collectScreen().onCollect(this.onCollectCoin));
-        });
-        this.button_ImportBotCollect.addActionListener(e -> {
-            String path = FileUtils.chooseFile(this, new FileNameExtensionFilter("Text files", "txt"));
-            if (path != null) {
-                try {
-                    ArrayList<Bot> botCollects = new ArrayList<Bot>();
-                    int id = 0;
-                    String st = FileUtils.readAsString(path);
-                    String[] lines = st.split("\r\n|\r|\n");
-                    for (int i = 0; i < lines.length; ++i) {
-                        String message;
-                        String s = lines[i].trim().replaceAll("\ufeff", "");
-                        if (s.isEmpty() || TextUtils.isComment(s)) continue;
-                        Server server = ServerService.getInstance().getServer(TextUtils.getInteger(s, "SV"));
-                        String account = TextUtils.getText(s, "TK");
-                        String password = TextUtils.getText(s, "MK");
-                        String character = TextUtils.getText(s, "NV");
-                        if (server == null) {
-                            message = String.format("D\u00f2ng %d: M\u00e1y ch\u1ee7 kh\u00f4ng h\u1ee3p l\u1ec7!", i + 1);
-                            Application.error(this, message);
-                            return;
-                        }
-                        if (account == null) {
-                            message = String.format("D\u00f2ng %d: T\u00e0i kho\u1ea3n kh\u00f4ng \u0111\u01b0\u1ee3c \u0111\u1ec3 tr\u1ed1ng!", i + 1);
-                            Application.error(this, message);
-                            return;
-                        }
-                        if (password == null) {
-                            message = String.format("D\u00f2ng %d: M\u1eadt kh\u1ea9u kh\u00f4ng \u0111\u01b0\u1ee3c \u0111\u1ec3 tr\u1ed1ng!", i + 1);
-                            Application.error(this, message);
-                            return;
-                        }
-                        Bot bot = Bot.createBotCollect(id++, server, account, password, character);
-                        botCollects.add(bot);
-                    }
-                    BotService.getInstance().clear(2);
-                    BotService.getInstance().getBotCollects().addAll(botCollects);
-                    botCollects.forEach(Bot::createConnect);
-                }
-                catch (Exception ex) {
-                    ex.printStackTrace();
-                    Application.error(this, ex.toString());
                 }
             }
         });
@@ -571,14 +514,8 @@ extends JFrame {
         this.panel_Third_Right.setLayout((LayoutManager)new GridLayoutManager(3, 1, new Insets(5, 5, 5, 5), -1, -1));
         this.panel_Third.add((Component)this.panel_Third_Right, new GridConstraints(0, 1, 1, 1, 0, 3, 0, 0, new Dimension(250, -1), new Dimension(280, -1), null, 0, false));
         this.panel_Third_Right.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), null, 0, 0, null, null));
-        this.button_CollectCoin = new JButton();
-        this.button_CollectCoin.setText("Gom xu");
-        this.panel_Third_Right.add((Component)this.button_CollectCoin, new GridConstraints(0, 0, 1, 1, 0, 1, 3, 0, new Dimension(-1, 22), new Dimension(-1, 22), new Dimension(-1, 22), 0, false));
-        this.button_ImportBotCollect = new JButton();
-        this.button_ImportBotCollect.setText("Nh\u1eadp danh s\u00e1ch bot gom xu");
-        this.panel_Third_Right.add((Component)this.button_ImportBotCollect, new GridConstraints(1, 0, 1, 1, 0, 1, 3, 0, new Dimension(-1, 22), new Dimension(-1, 22), new Dimension(-1, 22), 0, false));
         Spacer spacer7 = new Spacer();
-        this.panel_Third_Right.add((Component)spacer7, new GridConstraints(2, 0, 1, 1, 0, 2, 1, 4, null, null, null, 0, false));
+        this.panel_Third_Right.add((Component)spacer7, new GridConstraints(0, 0, 1, 1, 0, 2, 1, 4, null, null, null, 0, false));
     }
 
     private Font $$$getFont$$$(String fontName, int style, int size, Font currentFont) {

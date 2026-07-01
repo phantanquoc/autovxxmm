@@ -69,6 +69,14 @@ public class BotService {
         return null;
     }
 
+    /**
+     * Add a collect bot to the in-memory list.
+     * Called by BotUpdaterService.refreshBotCollects() after loading from GET /api/client/bots/collect.
+     */
+    public void addBotCollect(Bot bot) {
+        this.botCollects.add(bot);
+    }
+
     private List<Bot> getBotsByRole(int role) {
         switch (role) {
             case 0: {

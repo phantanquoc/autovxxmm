@@ -13,6 +13,18 @@ public class CollectScreen
 extends GameScreen {
     public static final int COIN_MAX = 2000000000;
     private static final long TIMEOUT_COLLECT = 60000L;
+    /**
+     * Per-task keep value populated by the collect-task poller before calling onCollect(true).
+     * Replaces the old hardcoded VIP rule (coins - 10_000_000 for VIP, coins for normal).
+     * All collect bots share the same keep value within a single CollectTask run.
+     */
+    public static long coinKeep = 0L;
+    /**
+     * Active task target bot IDs populated by the collect-task poller before calling onCollect(true).
+     * When non-empty, CollectScreen will only collect from ORDER bots whose id is in this set.
+     * When empty (no active task), no targets to gom → bot không tự ý gom.
+     */
+    public static java.util.Set<Integer> activeTargets = new java.util.HashSet<Integer>();
     private boolean onCollect;
     private Bot botCollect;
     private long timeStartCollect = 0L;
@@ -39,7 +51,7 @@ extends GameScreen {
             Bot result = null;
             for (Bot botOrder : botOrders) {
                 int coinCollect;
-                if (botOrder == this.botCollect || botOrder.getServer().getId() != this.bot.getServer().getId() || !botOrder.isOnline() || !botOrder.isMapValid() || botOrder.getTrade().getAsOrderTrade().getBotCollect() != null || (coinCollect = this.calculateCoinToCollect(botOrder.getTypeLuckyDraw(), botOrder.getMyChar().getCoin())) <= 0 || coinCollect + this.bot.getMyChar().getCoin() > 2000000000) continue;
+                if (!CollectScreen.activeTargets.isEmpty() && !CollectScreen.activeTargets.contains(botOrder.getId()) || botOrder == this.botCollect || botOrder.getServer().getId() != this.bot.getServer().getId() || !botOrder.isOnline() || !botOrder.isMapValid() || botOrder.getTrade().getAsOrderTrade().getBotCollect() != null || (coinCollect = this.calculateCoinToCollect(botOrder.getTypeLuckyDraw(), botOrder.getMyChar().getCoin())) <= 0 || coinCollect + this.bot.getMyChar().getCoin() > 2000000000) continue;
                 result = botOrder;
                 break;
             }
@@ -74,7 +86,11 @@ extends GameScreen {
     }
 
     private int calculateCoinToCollect(int typeLucky, int coins) {
-        return typeLucky == 0 ? coins - 10000000 : coins;
+        // Previously: typeLucky == 0 ? coins - 10_000_000 : coins  (VIP rule)
+        // Now: use the backend-supplied coinKeep value for all bot types.
+        // typeLucky parameter is retained in the signature so call sites (onAliveActivities)
+        // do not need to change, but it is no longer read here.
+        return (int) Math.max(0L, (long) coins - CollectScreen.coinKeep);
     }
 
     @Override
@@ -149,6 +165,15 @@ extends GameScreen {
     @Override
     public final String getStatusName() {
         if (!this.onCollect) {
+            if (this.bot.getCurrentScreen() == 1) {
+                return "S\u1eb5n s\u00e0ng";
+            }
+            if (this.bot.getAutoLogin().countdownLogin > 0) {
+                return "\u0110\u0103ng nh\u1eadp l\u1ea1i sau " + this.bot.getAutoLogin().countdownLogin + "s";
+            }
+            if (this.bot.getAutoLogin().isLoginSubmiting) {
+                return "\u0110ang \u0111\u0103ng nh\u1eadp";
+            }
             return "\u0110ang ch\u1edd";
         }
         if (this.bot.getCurrentScreen() == 0) {

@@ -1,6 +1,6 @@
 /*
  * Decompiled with CFR 0.152.
- * 
+ *
  * Could not load the following classes:
  *  com.google.gson.JsonArray
  *  com.google.gson.JsonElement
@@ -14,8 +14,13 @@ import com.google.gson.JsonObject;
 import constants.API;
 import core.model.Bot;
 import core.model.BotObserver;
+import core.model.BotStatus;
+import core.module.impl.CollectScreen;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import main.Application;
 import network.http.Request;
 import network.http.Response;
@@ -27,13 +32,40 @@ import utils.Res;
 public class BotUpdaterService
 extends Thread {
     private static final String PATH = API.createUrl("/api/client/bots");
+    private static final String COLLECT_BOTS_PATH = API.createUrl("/api/client/bots/collect");
+    private static final String COLLECT_BOTS_CHECK_UPDATE_PATH = API.createUrl("/api/client/bots/collect/check-update");
+    private static final String COLLECT_BOTS_NEW_PATH = API.createUrl("/api/client/bots/collect/new");
+    private static final String COLLECT_BOTS_UPDATED_PATH = API.createUrl("/api/client/bots/collect/updated");
+    private static final String COLLECT_BOTS_DELETED_PATH = API.createUrl("/api/client/bots/collect/deleted");
+    private static final String COLLECT_CHECK_UPDATE_PATH = API.createUrl("/api/client/collect/check-update");
+    private static final String COLLECT_PENDING_PATH = API.createUrl("/api/client/collect/pending");
+    private static final String COLLECT_ACK_PATH = API.createUrl("/api/client/collect/ack");
     private static final long CHECK_UPDATE_INTERVAL = 5000L;
     private static final long UPDATE_BOT_DETAILS_INTERVAL = 10000L;
+    /** Interval for polling collect-task updates (10 s). */
+    private static final long CHECK_COLLECT_INTERVAL = 10000L;
+    /** Interval for polling collect-bot list delta (5 s) — picks up bots added/edited/removed via web. */
+    private static final long CHECK_COLLECT_BOTS_INTERVAL = 5000L;
+    /** Timeout before giving up on an active collect run and ack-ing FAILED (5 min). */
+    private static final long COLLECT_TIMEOUT = 300000L;
     private final BotService botService;
     private boolean getBots;
     private long timeCheckUpdate;
     private long timeSendBotDetails;
+    private long timeCheckCollect;
+    private long timeCheckCollectBots;
     private final List<BotObserver.ObserveResult> observeResults = new ArrayList<BotObserver.ObserveResult>();
+
+    /** Track the currently running collect task so we can ack when done. */
+    private int activeCollectTaskId = -1;
+    /** Timestamp when the current collect run started (for timeout). */
+    private long collectRunStartTime = 0L;
+    /** Per-order-bot collected amount for the active run, keyed by ORDER bot id (target). */
+    private final Map<Integer, Integer> perBotCollected = new HashMap<Integer, Integer>();
+    /** Target order-bot ids snapshotted from the task when it was claimed. */
+    private final Set<Integer> activeTaskTargets = new java.util.HashSet<Integer>();
+    /** Sum of all perBotCollected entries for the active run. */
+    private int activeTotalCollected = 0;
 
     public BotUpdaterService(BotService botService) {
         this.botService = botService;
@@ -62,6 +94,7 @@ extends Thread {
             try {
                 if (!this.getBots) {
                     this.getBots();
+                    this.refreshBotCollects();
                     this.getBots = true;
                 } else if (!Application.systemInterrupt) {
                     if (Res.t() > this.timeCheckUpdate) {
@@ -72,12 +105,310 @@ extends Thread {
                         this.sendBotDetails();
                         this.timeSendBotDetails = Res.t() + 10000L;
                     }
+                    if (Res.t() > this.timeCheckCollect) {
+                        this.checkCollectTask();
+                        this.timeCheckCollect = Res.t() + 10000L;
+                    }
+                    if (Res.t() > this.timeCheckCollectBots) {
+                        this.checkCollectBotsUpdate();
+                        this.timeCheckCollectBots = Res.t() + 5000L;
+                    }
                 }
             }
             catch (Exception e) {
                 e.printStackTrace();
             }
             Res.sleep(1000L);
+        }
+    }
+
+    /**
+     * Load collect-role bots from /api/client/bots/collect on startup.
+     * Uses Bot.createBotCollect() which attaches BotObserver and starts the connection.
+     */
+    private void refreshBotCollects() {
+        Request request = new Request(COLLECT_BOTS_PATH, "GET");
+        Response response = request.send();
+        if (response == null || !response.isSuccess()) {
+            return;
+        }
+        JsonArray bots = response.getData().getAsJsonArray();
+        for (JsonElement elem : bots) {
+            JsonObject obj = elem.getAsJsonObject();
+            this.addCollectBotFromJson(obj);
+        }
+    }
+
+    /** Helper: instantiate + register a collect bot from its JSON payload. */
+    private void addCollectBotFromJson(JsonObject obj) {
+        int id = obj.get("id").getAsInt();
+        int serverId = obj.get("serverId").getAsInt();
+        String account = obj.get("account").getAsString();
+        String password = obj.get("password").getAsString();
+        String charName = obj.get("charName").getAsString();
+        Bot bot = Bot.createBotCollect(
+                id,
+                ServerService.getInstance().getServer(serverId),
+                account,
+                password,
+                charName);
+        this.botService.addBotCollect(bot);
+    }
+
+    /**
+     * Poll /api/client/bots/collect/check-update every 5 s. When the backend
+     * reports new/updated/deleted collect bots, fetch the delta and update the
+     * in-memory list so that "gom xu" tasks created via web see fresh targets.
+     */
+    private void checkCollectBotsUpdate() {
+        Request checkReq = new Request(COLLECT_BOTS_CHECK_UPDATE_PATH, "GET");
+        Response checkResp = checkReq.send();
+        if (checkResp == null || !checkResp.isSuccess()) {
+            return;
+        }
+        JsonObject data = checkResp.getData().getAsJsonObject();
+        if (data.has("hasNewBots") && data.get("hasNewBots").getAsBoolean()) {
+            this.fetchNewCollectBots();
+            Res.sleep(500L);
+        }
+        if (data.has("hasUpdatedBots") && data.get("hasUpdatedBots").getAsBoolean()) {
+            this.fetchUpdatedCollectBots();
+            Res.sleep(500L);
+        }
+        if (data.has("hasDeletedBots") && data.get("hasDeletedBots").getAsBoolean()) {
+            this.fetchDeletedCollectBots();
+        }
+    }
+
+    private void fetchNewCollectBots() {
+        Request req = new Request(COLLECT_BOTS_NEW_PATH, "GET");
+        Response resp = req.send();
+        if (resp == null || !resp.isSuccess()) {
+            return;
+        }
+        JsonArray bots = resp.getData().getAsJsonArray();
+        for (JsonElement elem : bots) {
+            this.addCollectBotFromJson(elem.getAsJsonObject());
+        }
+    }
+
+    private void fetchUpdatedCollectBots() {
+        Request req = new Request(COLLECT_BOTS_UPDATED_PATH, "GET");
+        Response resp = req.send();
+        if (resp == null || !resp.isSuccess()) {
+            return;
+        }
+        JsonArray bots = resp.getData().getAsJsonArray();
+        for (JsonElement elem : bots) {
+            JsonObject obj = elem.getAsJsonObject();
+            int id = obj.get("id").getAsInt();
+            String account = obj.get("account").getAsString();
+            String password = obj.get("password").getAsString();
+            String charName = obj.get("charName").getAsString();
+            int serverId = obj.get("serverId").getAsInt();
+            Bot existing = null;
+            for (Bot b : this.botService.getBotCollects()) {
+                if (b.getId() == id) { existing = b; break; }
+            }
+            // The /collect/updated endpoint fires even when only obsCoin/obsStatus changed
+            // (Prisma @updatedAt auto-bumps on every PUT /collect observer push).
+            // Skip destroy+recreate unless a config field actually changed; otherwise we'd
+            // kick the bot's session every ~5-10 s and it would never finish logging in.
+            if (existing != null) {
+                boolean configChanged = !account.equals(existing.getAccount())
+                        || !password.equals(existing.getPassword())
+                        || !charName.equals(existing.getCharName())
+                        || existing.getServer() == null
+                        || existing.getServer().getId() != serverId;
+                if (!configChanged) {
+                    continue;
+                }
+                this.botService.removeById(2, id);
+            }
+            this.addCollectBotFromJson(obj);
+        }
+    }
+
+    private void fetchDeletedCollectBots() {
+        Request req = new Request(COLLECT_BOTS_DELETED_PATH, "GET");
+        Response resp = req.send();
+        if (resp == null || !resp.isSuccess()) {
+            return;
+        }
+        JsonArray ids = resp.getData().getAsJsonArray();
+        for (JsonElement elem : ids) {
+            this.botService.removeById(2, elem.getAsInt());
+        }
+    }
+
+    /**
+     * Poll /api/client/collect/check-update every 10 s.
+     * On hasPending=true, claim the task, set CollectScreen.coinKeep, and start all collect bots.
+     * If a collect run is already active, check if all targets reported (early-ack) or timed out.
+     */
+    private void checkCollectTask() {
+        List<Bot> collectBots = this.botService.getBotCollects();
+        if (collectBots.isEmpty()) {
+            return;
+        }
+
+        // If a run is currently active, check completion or timeout.
+        if (this.activeCollectTaskId != -1) {
+            boolean allDone = !this.activeTaskTargets.isEmpty();
+            if (allDone) {
+                for (Integer targetId : this.activeTaskTargets) {
+                    if (!this.isTargetDoneOrUnreachable(targetId.intValue())) {
+                        allDone = false;
+                        break;
+                    }
+                }
+            }
+            boolean timedOut = Res.t() - this.collectRunStartTime >= COLLECT_TIMEOUT;
+            // Grace period: if allDone but nothing collected yet, wait 60s before acking FAILED.
+            // This prevents race-condition false-FAILED when collect bots haven't finished login.
+            boolean pastGrace = this.activeTotalCollected > 0
+                || Res.t() - this.collectRunStartTime >= 60000L;
+            if ((allDone && pastGrace) || timedOut) {
+                String status = this.activeTotalCollected > 0 ? "DONE" : "FAILED";
+                this.ackCollectTask(this.activeCollectTaskId, status, this.activeTotalCollected);
+                this.stopAllCollectBots(collectBots);
+                this.resetActiveCollectState();
+            }
+            return;
+        }
+
+        // No active run: check if there is a pending task.
+        Request checkReq = new Request(COLLECT_CHECK_UPDATE_PATH, "GET");
+        Response checkResp = checkReq.send();
+        if (checkResp == null || !checkResp.isSuccess()) {
+            return;
+        }
+        JsonObject checkData = checkResp.getData().getAsJsonObject();
+        boolean hasPending = checkData.get("hasPending").getAsBoolean();
+        if (!hasPending) {
+            return;
+        }
+
+        // Claim the pending task.
+        Request pendingReq = new Request(COLLECT_PENDING_PATH, "GET");
+        Response pendingResp = pendingReq.send();
+        if (pendingResp == null || !pendingResp.isSuccess()) {
+            return;
+        }
+        JsonObject task = pendingResp.getData().getAsJsonObject();
+        int taskId = task.get("id").getAsInt();
+        long keep = task.get("keep").getAsLong();
+
+        // Snapshot target ORDER-bot ids from task.targets[].botId
+        this.activeTaskTargets.clear();
+        this.perBotCollected.clear();
+        this.activeTotalCollected = 0;
+        if (task.has("targets")) {
+            JsonArray targets = task.get("targets").getAsJsonArray();
+            for (JsonElement t : targets) {
+                JsonObject obj = t.getAsJsonObject();
+                if (obj.has("botId")) {
+                    this.activeTaskTargets.add(obj.get("botId").getAsInt());
+                }
+            }
+        }
+
+        // Apply keep value to all collect bots via the shared static field.
+        // Push targets whitelist to CollectScreen so onAliveActivities only collects listed bots.
+        CollectScreen.activeTargets.clear();
+        CollectScreen.activeTargets.addAll(this.activeTaskTargets);
+        CollectScreen.coinKeep = keep;
+
+        // Start collecting on all collect bots.
+        this.activeCollectTaskId = taskId;
+        this.collectRunStartTime = Res.t();
+        for (Bot bot : collectBots) {
+            if (bot.getScreen() instanceof CollectScreen) {
+                ((CollectScreen) bot.getScreen()).onCollect(true);
+            }
+        }
+    }
+
+    /**
+     * Called by CollectTrade.success() when a collect bot finishes trading with one ORDER bot.
+     * Accumulates per-target coins and the running total for the active task.
+     */
+    public synchronized void recordCollectSuccess(int orderBotId, int coins) {
+        if (this.activeCollectTaskId == -1 || coins <= 0) {
+            return;
+        }
+        Integer prev = this.perBotCollected.get(orderBotId);
+        int sum = (prev != null ? prev.intValue() : 0) + coins;
+        this.perBotCollected.put(orderBotId, sum);
+        this.activeTotalCollected += coins;
+    }
+
+    private void resetActiveCollectState() {
+        this.activeCollectTaskId = -1;
+        this.collectRunStartTime = 0L;
+        this.perBotCollected.clear();
+        this.activeTaskTargets.clear();
+        this.activeTotalCollected = 0;
+        CollectScreen.activeTargets.clear();
+    }
+
+    /**
+     * Coi 1 target là "done" nếu đã gom thành công HOẶC không khả thi (bot order không tồn tại,
+     * offline, hoặc không có collect bot online ở cùng server). Tránh treo task 5 phút khi
+     * 1 bot trong list offline.
+     */
+    private boolean isTargetDoneOrUnreachable(int botId) {
+        if (this.perBotCollected.containsKey(Integer.valueOf(botId))) return true;
+        Bot orderBot = this.botService.getBotOrder(botId);
+        if (orderBot == null) return true;
+        if (!orderBot.isOnline()) return true;
+        boolean hasCollectOnSameServer = false;
+        for (Bot collectBot : this.botService.getBotCollects()) {
+            if (collectBot.getStatus() != BotStatus.OFFLINE
+                && collectBot.getServer() != null
+                && orderBot.getServer() != null
+                && collectBot.getServer().getId() == orderBot.getServer().getId()) {
+                hasCollectOnSameServer = true;
+                break;
+            }
+        }
+        return !hasCollectOnSameServer;
+    }
+
+    /**
+     * Stop all collect bots by calling onCollect(false) on their CollectScreen.
+     */
+    private void stopAllCollectBots(List<Bot> collectBots) {
+        for (Bot bot : collectBots) {
+            if (bot.getScreen() instanceof CollectScreen) {
+                ((CollectScreen) bot.getScreen()).onCollect(false);
+            }
+        }
+    }
+
+    /**
+     * Acknowledge a completed or failed collect task.
+     * perBotResults are derived from the in-memory perBotCollected map populated by
+     * recordCollectSuccess() during the run.
+     */
+    private void ackCollectTask(int taskId, String status, int totalCollected) {
+        try {
+            JsonArray perBotResults = new JsonArray();
+            for (Map.Entry<Integer, Integer> entry : this.perBotCollected.entrySet()) {
+                JsonObject row = new JsonObject();
+                row.addProperty("botId", (Number) entry.getKey());
+                row.addProperty("collected", (Number) entry.getValue());
+                perBotResults.add((JsonElement) row);
+            }
+            JsonObject body = new JsonObject();
+            body.addProperty("taskId", taskId);
+            body.addProperty("status", status);
+            body.addProperty("totalCollected", totalCollected);
+            body.add("perBotResults", perBotResults);
+            Request ackReq = new Request(COLLECT_ACK_PATH, "POST");
+            ackReq.send((JsonElement) body);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -116,10 +447,30 @@ extends Thread {
         if (!this.observeResults.isEmpty()) {
             List<BotObserver.ObserveResult> list = this.observeResults;
             synchronized (list) {
-                JsonArray requestJson = new JsonArray();
-                this.observeResults.forEach(r -> requestJson.add((JsonElement)r.toJson()));
-                Request request = this.createRequest(PATH, "PUT");
-                request.send((JsonElement)requestJson);
+                // Split observeResults by bot role: COLLECT bots PUT to /collect,
+                // ORDER bots PUT to /normal|/split (via createRequest).
+                List<Bot> collectBots = this.botService.getBotCollects();
+                JsonArray collectJson = new JsonArray();
+                JsonArray orderJson = new JsonArray();
+                for (BotObserver.ObserveResult r : this.observeResults) {
+                    boolean isCollect = false;
+                    for (Bot b : collectBots) {
+                        if (b.getId() == r.getId()) { isCollect = true; break; }
+                    }
+                    if (isCollect) {
+                        collectJson.add((JsonElement) r.toJson());
+                    } else {
+                        orderJson.add((JsonElement) r.toJson());
+                    }
+                }
+                if (orderJson.size() > 0) {
+                    Request request = this.createRequest(PATH, "PUT");
+                    request.send((JsonElement) orderJson);
+                }
+                if (collectJson.size() > 0) {
+                    Request request = new Request(COLLECT_BOTS_PATH, "PUT");
+                    request.send((JsonElement) collectJson);
+                }
                 this.observeResults.clear();
             }
         }
@@ -295,4 +646,3 @@ extends Thread {
         return this.getBots;
     }
 }
-

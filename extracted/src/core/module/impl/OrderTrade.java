@@ -8,6 +8,7 @@ import core.model.Char;
 import core.model.Order;
 import core.module.Trade;
 import core.module.impl.OrderScreen;
+import core.module.impl.CollectScreen;
 import core.service.MessageStream;
 import core.service.Spam;
 import main.Application;
@@ -185,8 +186,6 @@ extends Trade {
             TradeLogService.save(this.log);
         } else if (this.isTradeCollect(this.tradeName)) {
             this.bot.debug("giao d\u1ecbch th\u00e0nh c\u00f4ng " + Res.moneyFormat(this.coinTradeOrder) + " xu cho nh\u00e2n v\u1eadt: " + this.tradeName);
-            this.log.success(this.bot.getMyChar().getCoin(), "Gom xu t\u1ef1 \u0111\u1ed9ng", 2);
-            TradeLogService.save(this.log);
         } else if (this.isTradeManager(this.tradeName)) {
             this.bot.debug("giao d\u1ecbch th\u00e0nh c\u00f4ng " + Res.moneyFormat(this.coinTradeOrder) + " xu cho qu\u1ea3n l\u00fd: " + this.tradeName);
             this.log.success(this.bot.getMyChar().getCoin(), "Gom xu qua qu\u1ea3n l\u00fd", 2);
@@ -215,7 +214,7 @@ extends Trade {
     }
 
     private int calculateCoinToCollect(int typeLucky, int coins) {
-        return typeLucky == 0 ? coins - 10000000 : coins;
+        return (int) Math.max(0L, (long) coins - CollectScreen.coinKeep);
     }
 
     @Override

@@ -7,6 +7,7 @@ import core.model.Bot;
 import core.model.Char;
 import core.module.Trade;
 import core.module.impl.CollectScreen;
+import service.BotService;
 import utils.Res;
 
 public class CollectTrade
@@ -48,6 +49,12 @@ extends Trade {
     @Override
     public final void success() {
         this.bot.debug("Gom th\u00e0nh c\u00f4ng " + Res.moneyFormat(this.coinTradeOrder) + " xu t\u1eeb nh\u00e2n v\u1eadt: " + this.tradeName);
+        // Report success back to the active CollectTask so its ack carries per-bot results.
+        Bot orderBot = this.screen.getBotCollect();
+        if (orderBot != null && this.coinTradeOrder > 0) {
+            BotService.getInstance().getUpdaterService()
+                    .recordCollectSuccess(orderBot.getId(), this.coinTradeOrder);
+        }
     }
 }
 

@@ -57,7 +57,7 @@ implements Runnable {
     }
 
     private boolean shouldDissconnect() {
-        return !this.bot.isEnable() || Application.systemInterrupt || this.bot.getRole() == 2 && !this.bot.getScreen().collectScreen().isOnCollect() || this.bot.getRole() == 1 && !this.bot.getScreen().transferScreen().isOnTransfer();
+        return !this.bot.isEnable() || Application.systemInterrupt || this.bot.getRole() == 1 && !this.bot.getScreen().transferScreen().isOnTransfer();
     }
 
     public void reconnect() {
