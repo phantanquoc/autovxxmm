@@ -38,3 +38,15 @@ backend/backup-pre-tenant.sql
 # player-logs/* do LocalLog.java ghi (log nhân vật theo ngày)
 records/credentials.txt
 player-logs/
+.gitnexus
+
+# Local Claude Code / MCP config
+.claude/
+.mcp.json
+
+# Pre-migration/pre-refactor snapshots
+libs/app.jar.before-*
+backup_pre_*.sql
+
+# Runtime log output do tool Java ghi
+order-logs/
