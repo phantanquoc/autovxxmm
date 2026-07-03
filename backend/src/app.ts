@@ -34,9 +34,12 @@ patchBigIntJson();
 
 const app = express();
 app.use(helmet());
+const corsOrigin = env.CORS_ORIGIN === '*'
+  ? true
+  : env.CORS_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean);
 app.use(
   cors({
-    origin: true,
+    origin: corsOrigin,
     credentials: true,
     exposedHeaders: ['Content-Range'],
   })

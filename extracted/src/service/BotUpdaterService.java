@@ -17,6 +17,7 @@ import core.model.BotObserver;
 import core.model.BotStatus;
 import core.module.impl.CollectScreen;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -141,18 +142,7 @@ extends Thread {
 
     /** Helper: instantiate + register a collect bot from its JSON payload. */
     private void addCollectBotFromJson(JsonObject obj) {
-        int id = obj.get("id").getAsInt();
-        int serverId = obj.get("serverId").getAsInt();
-        String account = obj.get("account").getAsString();
-        String password = obj.get("password").getAsString();
-        String charName = obj.get("charName").getAsString();
-        Bot bot = Bot.createBotCollect(
-                id,
-                ServerService.getInstance().getServer(serverId),
-                account,
-                password,
-                charName);
-        this.botService.addBotCollect(bot);
+        this.botService.addBotCollect(Bot.createBotCollect(obj));
     }
 
     /**
@@ -206,26 +196,63 @@ extends Thread {
             String password = obj.get("password").getAsString();
             String charName = obj.get("charName").getAsString();
             int serverId = obj.get("serverId").getAsInt();
+            int mapId = obj.get("mapId").getAsInt();
+            int zoneId = obj.get("zoneId").getAsInt();
+            int posX = obj.get("posX").getAsInt();
+            int posY = obj.get("posY").getAsInt();
+            String manager = obj.get("manager").getAsString().trim();
+            String[] chat = Res.split(obj.get("chat").getAsString(), ";");
+            String[] sms = Res.split(obj.get("sms").getAsString(), ";");
+            boolean enable = obj.get("enable").getAsBoolean();
+
             Bot existing = null;
             for (Bot b : this.botService.getBotCollects()) {
                 if (b.getId() == id) { existing = b; break; }
             }
+
             // The /collect/updated endpoint fires even when only obsCoin/obsStatus changed
             // (Prisma @updatedAt auto-bumps on every PUT /collect observer push).
             // Skip destroy+recreate unless a config field actually changed; otherwise we'd
             // kick the bot's session every ~5-10 s and it would never finish logging in.
             if (existing != null) {
-                boolean configChanged = !account.equals(existing.getAccount())
+                boolean identityChanged = !account.equals(existing.getAccount())
                         || !password.equals(existing.getPassword())
                         || !charName.equals(existing.getCharName())
                         || existing.getServer() == null
                         || existing.getServer().getId() != serverId;
-                if (!configChanged) {
-                    continue;
+                boolean configChanged =
+                        existing.getMapId() != mapId
+                        || existing.getZoneId() != zoneId
+                        || existing.getPosX() != posX
+                        || existing.getPosY() != posY
+                        || !manager.equals(existing.getManager())
+                        || existing.isEnable() != enable
+                        || !Arrays.equals(existing.getChat() == null ? new String[0] : existing.getChat(), chat)
+                        || !Arrays.equals(existing.getSms() == null ? new String[0] : existing.getSms(), sms);
+                if (identityChanged) {
+                    // destroy+recreate: credentials or server changed
+                    this.botService.removeById(2, id);
+                    this.botService.addBotCollect(Bot.createBotCollect(obj));
+                } else if (configChanged) {
+                    // apply in-place: location/enable/chat/sms changed, no session churn needed
+                    boolean wasDisabled = !existing.isEnable();
+                    existing.setMapId(mapId);
+                    existing.setZoneId(zoneId);
+                    existing.setPosX(posX);
+                    existing.setPosY(posY);
+                    existing.setManager(manager);
+                    existing.setChat(chat);
+                    existing.setSms(sms);
+                    existing.setEnable(enable);
+                    if (wasDisabled && enable) {
+                        existing.getAutoLogin().reconnect();
+                    }
                 }
-                this.botService.removeById(2, id);
+                // else: no functional change (probably just obsCoin bumped) — skip, avoid session churn
+            } else {
+                // new bot arrived via updated endpoint
+                this.botService.addBotCollect(Bot.createBotCollect(obj));
             }
-            this.addCollectBotFromJson(obj);
         }
     }
 

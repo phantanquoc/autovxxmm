@@ -114,13 +114,21 @@ public class Bot {
         return bot;
     }
 
-    public static Bot createBotCollect(int id, Server server, String account, String password, String charName) {
+    public static Bot createBotCollect(JsonObject botJson) {
         Bot bot = new Bot(2);
-        bot.setId(id);
-        bot.setServer(server);
-        bot.setAccount(account);
-        bot.setPassword(password);
-        bot.setCharName(charName);
+        bot.setId(botJson.get("id").getAsInt());
+        bot.setAccount(botJson.get("account").getAsString());
+        bot.setPassword(botJson.get("password").getAsString());
+        bot.setCharName(botJson.get("charName").getAsString());
+        bot.setServer(ServerService.getInstance().getServer(botJson.get("serverId").getAsInt()));
+        bot.setMapId(botJson.get("mapId").getAsInt());
+        bot.setZoneId(botJson.get("zoneId").getAsInt());
+        bot.setPosX(botJson.get("posX").getAsInt());
+        bot.setPosY(botJson.get("posY").getAsInt());
+        bot.setManager(botJson.get("manager").getAsString().trim());
+        bot.setChat(Res.split(botJson.get("chat").getAsString(), ";"));
+        bot.setSms(Res.split(botJson.get("sms").getAsString(), ";"));
+        bot.setEnable(botJson.get("enable").getAsBoolean());
         CollectScreen screen = new CollectScreen(bot);
         CollectTrade trade = new CollectTrade(bot, screen);
         bot.setScreen(screen);

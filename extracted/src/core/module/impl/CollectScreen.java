@@ -28,6 +28,8 @@ extends GameScreen {
     private boolean onCollect;
     private Bot botCollect;
     private long timeStartCollect = 0L;
+    private long nextNavigationAllowedAt = 0L;
+    private boolean wasOnline = false;
 
     public CollectScreen(Bot bot) {
         super(bot);
@@ -37,6 +39,30 @@ extends GameScreen {
     protected void onAliveActivities() {
         boolean skip;
         if (!this.onCollect) {
+            if (this.bot.getMyChar() == null || !this.bot.isOnline()) {
+                this.wasOnline = false;
+                return;
+            }
+            if (!this.wasOnline) {
+                this.wasOnline = true;
+                this.nextNavigationAllowedAt = Res.t() + 15000L;
+                return;
+            }
+            if (Res.t() < this.nextNavigationAllowedAt) {
+                return;
+            }
+            if (this.bot.getTrade().isShow()) {
+                this.bot.getTrade().update();
+                return;
+            }
+            if (!this.compareMapAndZone(this.bot.getMapId(), this.bot.getZoneId())) {
+                this.changeMapAndZone(this.bot.getMapId(), this.bot.getZoneId());
+                return;
+            }
+            if (this.bot.getMyChar().getPosX() != this.bot.getPosX()
+                    || this.bot.getMyChar().getPosY() != this.bot.getPosY()) {
+                this.move(this.bot.getPosX(), this.bot.getPosY());
+            }
             return;
         }
         boolean bl = skip = this.botCollect == null || !this.botCollect.isOnline() || !this.botCollect.isMapValid() || this.calculateCoinToCollect(this.botCollect.getTypeLuckyDraw(), this.botCollect.getMyChar().getCoin()) <= 0 || this.bot.getMyChar().getCoin() >= 2000000000 || this.botCollect.getTrade().getAsOrderTrade().getBotCollect() != null && this.botCollect.getTrade().getAsOrderTrade().getBotCollect() != this.bot || this.timeStartCollect > 0L && Res.t() - this.timeStartCollect >= 60000L;
@@ -77,6 +103,11 @@ extends GameScreen {
     }
 
     public void onCollect(boolean state) {
+        if (state) {
+            this.nextNavigationAllowedAt = 0L;
+        } else {
+            this.nextNavigationAllowedAt = Res.t() + 15000L;
+        }
         this.onCollect = state;
         this.timeStartCollect = 0L;
         if (this.botCollect != null) {

@@ -1,5 +1,7 @@
 import { getToken, clearToken } from './auth'
 
+const API_BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '')
+
 export class ApiError extends Error {
   status: number
   body?: unknown
@@ -25,7 +27,7 @@ async function fetchWithAuth(path: string, opts: RequestInit = {}): Promise<Resp
   const token = getToken()
   if (token) headers.set('Authorization', `Bearer ${token}`)
 
-  const res = await fetch(`/api${path}`, { ...opts, headers })
+  const res = await fetch(`${API_BASE}/api${path}`, { ...opts, headers })
 
   if (!res.ok) {
     if (res.status === 401) {

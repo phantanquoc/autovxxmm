@@ -220,6 +220,10 @@ implements Runnable {
             this.zoneChange = zoneId;
             this.isChangeZone = true;
             Npc npc = this.findNearNpcInMap(13);
+            if (npc == null) {
+                this.lastChangeZone = Res.t();
+                return;
+            }
             this.move(npc.getPosX(), npc.getPosY());
             Res.sleep(2000L);
             this.bot.getConnection().getService().requestChangeZone(zoneId, -1);

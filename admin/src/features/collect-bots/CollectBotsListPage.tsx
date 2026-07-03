@@ -7,6 +7,7 @@ import {
   useScanCollect, useCreateCollectTask, CollectBot, CollectTask, ScanResult,
 } from './useCollectBots'
 import { CollectBotFormDialog } from './CollectBotFormDialog'
+import { NINJA_MAPS } from '@/features/bots/mapData'
 import { useResourceServers } from '@/features/servers/useServers'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
@@ -278,6 +279,18 @@ export function CollectBotsListPage() {
                   <span className="text-sm">{b.obsName || b.charName || b.account || '—'}</span>
                 </div>
               ),
+            },
+            {
+              header: 'Vị trí',
+              cell: (b) => {
+                const mapName = NINJA_MAPS.find(m => m.id === b.mapId)?.name
+                return (
+                  <div className="flex flex-col text-xs">
+                    <span>{mapName ? `${mapName} (${b.mapId})` : `Map ${b.mapId}`}</span>
+                    <span className="text-muted-foreground">Khu vực {b.zoneId}</span>
+                  </div>
+                )
+              },
             },
             {
               header: 'Xu',

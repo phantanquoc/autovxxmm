@@ -10,6 +10,7 @@ const schema = z.object({
   ADMIN_USERNAME: z.string().default('admin'),
   ADMIN_PASSWORD: z.string().default('admin@123'),
   LOG_LEVEL: z.string().default('info'),
+  CORS_ORIGIN: z.string().default('*'),
 });
 
 const parsed = schema.safeParse(process.env);
