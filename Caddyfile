@@ -2,7 +2,14 @@
     @admin host bota.io.vn
     handle @admin {
         encode zstd gzip
-        reverse_proxy admin:80
+
+        handle /api/* {
+            reverse_proxy api:8009
+        }
+
+        handle {
+            reverse_proxy admin:80
+        }
     }
 
     @api host api.bota.io.vn

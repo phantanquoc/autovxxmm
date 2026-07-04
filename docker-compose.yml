@@ -37,6 +37,8 @@ services:
   admin:
     build:
       context: ./admin
+      args:
+        VITE_API_URL: ""
     restart: unless-stopped
     expose:
       - "80"
