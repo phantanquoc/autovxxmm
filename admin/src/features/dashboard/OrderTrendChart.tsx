@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { apiList } from '@/lib/api'
 import { buildQS } from '@/lib/buildQS'
+import { getCurrentUser } from '@/lib/auth'
 import { Order } from '@/features/orders/useOrders'
 import {
   LineChart,
@@ -20,9 +21,11 @@ interface OrderTrendChartProps {
 
 export function OrderTrendChart({ tab }: OrderTrendChartProps) {
   const qs = buildQS({ page: 1, pageSize: 200, sort: 'createdAt', order: 'desc' })
+  const isAdmin = getCurrentUser()?.role === 'ADMIN'
+  const basePath = isAdmin ? '/admin/orders' : '/me/orders'
   const { data: result, isLoading } = useQuery({
-    queryKey: ['orders-chart', qs],
-    queryFn: () => apiList<Order>(`/admin/orders?${qs}`),
+    queryKey: ['orders-chart', basePath, qs],
+    queryFn: () => apiList<Order>(`${basePath}?${qs}`),
     staleTime: 60000,
   })
   const orders = result?.items ?? []
