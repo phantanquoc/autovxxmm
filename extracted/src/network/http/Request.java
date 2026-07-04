@@ -82,38 +82,51 @@ public class Request {
     public Response send(JsonElement requestData) {
         int attemp = 0;
         while (true) {
-            try {
-                while (true) {
-                    HttpUriRequest request;
-                    CloseableHttpResponse httpResponse;
-                    int statusCode;
-                    if ((statusCode = (httpResponse = httpClient.execute(request = this.createRequest(requestData))).getStatusLine().getStatusCode()) == 200) {
-                        JsonElement responseData = this.getResponseData((HttpResponse)httpResponse);
+            // try-with-resources: LU\u00d4N \u0111\u00f3ng response \u0111\u1ec3 tr\u1ea3 connection v\u1ec1 pool.
+            // Bug c\u0169: nh\u00e1nh non-200 kh\u00f4ng consume entity \u2192 connection leak \u2192 pool (2/route)
+            // c\u1ea1n sau v\u00e0i response 4xx/5xx \u2192 m\u1ecdi request sau treo v\u00f4 h\u1ea1n \u1edf getPoolEntryBlocking.
+            try (CloseableHttpResponse httpResponse = httpClient.execute(this.createRequest(requestData))) {
+                int statusCode = httpResponse.getStatusLine().getStatusCode();
+                if (statusCode == 200) {
+                    JsonElement responseData = this.getResponseData((HttpResponse) httpResponse);
+                    return new Response(statusCode, responseData);
+                }
+                if (statusCode == 401) {
+                    if (authenticationToken == null) {
+                        JsonElement responseData = this.getResponseData((HttpResponse) httpResponse);
                         return new Response(statusCode, responseData);
                     }
-                    if (statusCode == 401) {
-                        if (authenticationToken == null) {
-                            JsonElement responseData = this.getResponseData((HttpResponse)httpResponse);
-                            return new Response(statusCode, responseData);
-                        }
-                        Application.alert("Phi\u00ean \u0111\u0103ng nh\u1eadp \u0111\u00e3 h\u1ebft h\u1ea1n!");
-                        System.exit(0);
-                        continue;
-                    }
-                    if (++attemp >= 10) {
-                        return new Response(statusCode, null);
-                    }
-                    Res.sleep(500L);
+                    Application.alert("Phi\u00ean \u0111\u0103ng nh\u1eadp \u0111\u00e3 h\u1ebft h\u1ea1n!");
+                    System.exit(0);
+                    return new Response(statusCode, null);
                 }
+                // 4xx (tr\u1eeb 401) l\u00e0 l\u1ed7i client c\u1ed1 \u0111\u1ecbnh \u2014 retry v\u00f4 \u00edch, tr\u1ea3 lu\u00f4n \u0111\u1ec3 caller x\u1eed l\u00fd.
+                if (statusCode >= 400 && statusCode < 500) {
+                    return new Response(statusCode, this.getResponseData((HttpResponse) httpResponse));
+                }
+                // 5xx / status kh\u00e1c: retry c\u00f3 gi\u1edbi h\u1ea1n.
+                if (++attemp >= 10) {
+                    return new Response(statusCode, null);
+                }
+                Res.sleep(500L);
             }
-            catch (HttpHostConnectException request) {
-                continue;
+            catch (HttpHostConnectException e) {
+                // Server t\u1ea1m th\u1eddi kh\u00f4ng k\u1ebft n\u1ed1i \u0111\u01b0\u1ee3c: retry c\u00f3 gi\u1edbi h\u1ea1n + sleep,
+                // tr\u00e1nh busy-loop chi\u1ebfm CPU nh\u01b0 b\u1ea3n c\u0169 (continue kh\u00f4ng sleep).
+                if (++attemp >= 10) {
+                    return new Response(0, null);
+                }
+                Res.sleep(500L);
             }
             catch (Exception e) {
+                // G\u1ed3m c\u1ea3 ConnectionPoolTimeoutException khi pool b\u1eadn qu\u00e1 l\u00e2u (nh\u1edd
+                // connectionRequestTimeout) \u2014 fail-fast r\u1ed3i retry thay v\u00ec treo m\u00e3i.
                 e.printStackTrace();
-                continue;
+                if (++attemp >= 10) {
+                    return new Response(0, null);
+                }
+                Res.sleep(500L);
             }
-            break;
         }
     }
 
@@ -209,9 +222,22 @@ public class Request {
     static {
         LOGIN_PATH = API.createUrl("/api/login");
         HEALTH_PATH = API.createUrl("/api/health");
-        RequestConfig requestConfig = RequestConfig.custom().setConnectTimeout(30000).setSocketTimeout(30000).build();
+        // connectionRequestTimeout: chờ tối đa 30s để mượn connection từ pool rồi
+        // ném ConnectionPoolTimeoutException — KHÔNG treo vô hạn nếu pool cạn.
+        RequestConfig requestConfig = RequestConfig.custom()
+                .setConnectTimeout(30000)
+                .setSocketTimeout(30000)
+                .setConnectionRequestTimeout(30000)
+                .build();
         DefaultServiceUnavailableRetryStrategy retryStrategy = new DefaultServiceUnavailableRetryStrategy(10, 500);
-        httpClient = HttpClients.custom().setDefaultRequestConfig(requestConfig).setServiceUnavailableRetryStrategy((ServiceUnavailableRetryStrategy)retryStrategy).build();
+        // Nới pool: mặc định chỉ 2 connection/route — quá ít cho nhiều luồng bot
+        // + observer + order cùng gọi API. Nâng lên để không nghẽn cổ chai.
+        httpClient = HttpClients.custom()
+                .setDefaultRequestConfig(requestConfig)
+                .setServiceUnavailableRetryStrategy((ServiceUnavailableRetryStrategy)retryStrategy)
+                .setMaxConnPerRoute(50)
+                .setMaxConnTotal(100)
+                .build();
     }
 }
 
