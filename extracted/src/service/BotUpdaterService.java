@@ -471,34 +471,69 @@ extends Thread {
      * WARNING - Removed try catching itself - possible behaviour change.
      */
     private void sendBotDetails() {
-        if (!this.observeResults.isEmpty()) {
-            List<BotObserver.ObserveResult> list = this.observeResults;
-            synchronized (list) {
-                // Split observeResults by bot role: COLLECT bots PUT to /collect,
-                // ORDER bots PUT to /normal|/split (via createRequest).
-                List<Bot> collectBots = this.botService.getBotCollects();
-                JsonArray collectJson = new JsonArray();
-                JsonArray orderJson = new JsonArray();
-                for (BotObserver.ObserveResult r : this.observeResults) {
-                    boolean isCollect = false;
-                    for (Bot b : collectBots) {
-                        if (b.getId() == r.getId()) { isCollect = true; break; }
-                    }
-                    if (isCollect) {
-                        collectJson.add((JsonElement) r.toJson());
-                    } else {
-                        orderJson.add((JsonElement) r.toJson());
-                    }
-                }
-                if (orderJson.size() > 0) {
-                    Request request = this.createRequest(PATH, "PUT");
-                    request.send((JsonElement) orderJson);
-                }
-                if (collectJson.size() > 0) {
-                    Request request = new Request(COLLECT_BOTS_PATH, "PUT");
-                    request.send((JsonElement) collectJson);
-                }
-                this.observeResults.clear();
+        // Snapshot + drain queue dưới CÙNG monitor với addObserveResult (this),
+        // rồi nhả lock TRƯỚC KHI gọi network để game-thread không bị block trên
+        // một PUT chậm/lỗi và tránh ConcurrentModificationException.
+        List<BotObserver.ObserveResult> batch;
+        synchronized (this) {
+            if (this.observeResults.isEmpty()) {
+                return;
+            }
+            batch = new ArrayList<BotObserver.ObserveResult>(this.observeResults);
+            this.observeResults.clear();
+        }
+
+        // Split batch theo role: COLLECT bots PUT /collect, ORDER bots PUT /normal|/split.
+        List<Bot> collectBots = this.botService.getBotCollects();
+        JsonArray collectJson = new JsonArray();
+        JsonArray orderJson = new JsonArray();
+        List<BotObserver.ObserveResult> orderBatch = new ArrayList<BotObserver.ObserveResult>();
+        List<BotObserver.ObserveResult> collectBatch = new ArrayList<BotObserver.ObserveResult>();
+        for (BotObserver.ObserveResult r : batch) {
+            boolean isCollect = false;
+            for (Bot b : collectBots) {
+                if (b.getId() == r.getId()) { isCollect = true; break; }
+            }
+            if (isCollect) {
+                collectJson.add((JsonElement) r.toJson());
+                collectBatch.add(r);
+            } else {
+                orderJson.add((JsonElement) r.toJson());
+                orderBatch.add(r);
+            }
+        }
+
+        // On failure re-enqueue: BotObserver đã advance cache `this.coin` khi enqueue,
+        // nên nếu bỏ payload rớt thì web kẹt giá trị cũ tới khi xu đổi lần nữa.
+        if (orderJson.size() > 0) {
+            Request request = this.createRequest(PATH, "PUT");
+            Response response = request.send((JsonElement) orderJson);
+            if (response == null || !response.isSuccess()) {
+                this.requeueFailed(orderBatch);
+            }
+        }
+        if (collectJson.size() > 0) {
+            Request request = new Request(COLLECT_BOTS_PATH, "PUT");
+            Response response = request.send((JsonElement) collectJson);
+            if (response == null || !response.isSuccess()) {
+                this.requeueFailed(collectBatch);
+            }
+        }
+    }
+
+    /**
+     * Đưa các observe-result gửi hụt trở lại queue để retry ở chu kỳ sau (10s),
+     * nhưng chỉ khi CHƯA có snapshot mới hơn cho cùng bot id được enqueue trong lúc
+     * PUT đang bay — giá trị mới hơn luôn thắng.
+     */
+    private synchronized void requeueFailed(List<BotObserver.ObserveResult> failed) {
+        for (BotObserver.ObserveResult r : failed) {
+            boolean superseded = false;
+            for (BotObserver.ObserveResult pending : this.observeResults) {
+                if (pending.getId() == r.getId()) { superseded = true; break; }
+            }
+            if (!superseded) {
+                this.observeResults.add(r);
             }
         }
     }
