@@ -64,6 +64,8 @@ extends JFrame {
     private JTextField field_MessageOrderError;
     private JCheckBox checkbox_EnableKeepBotOnline;
     private JTextField field_MinuteKeepBotOnline;
+    private JTextField field_LoginStagger;
+    private JTextField field_LoginInterval;
     private boolean isUpdating = false;
 
     public SettingUI() {
@@ -71,7 +73,7 @@ extends JFrame {
         this.setContentPane(this.panel_Content);
         this.setDefaultCloseOperation(2);
         this.setTitle(Strings.SETTING_TITLE);
-        this.setSize(450, 620);
+        this.setSize(450, 700);
         this.setLocationRelativeTo(null);
         this.button_Close.addActionListener(e -> this.setVisible(false));
         this.button_Save.addActionListener(e -> {
@@ -99,6 +101,8 @@ extends JFrame {
             int mapSaveReturnPoint = Res.getNumber(this.field_MapSaveReturnPoint.getText().trim());
             boolean enableKeepBotOnline = this.checkbox_EnableKeepBotOnline.isSelected();
             int minuteKeepBotOnline = Res.getNumber(this.field_MinuteKeepBotOnline.getText().trim());
+            int loginStagger = Res.getNumber(this.field_LoginStagger.getText().trim());
+            int loginInterval = Res.getNumber(this.field_LoginInterval.getText().trim());
             String cause = null;
             if (!SettingService.isValidProtectionCode(protectionCode) && autoRegisterProtection) {
                 cause = "M\u00e3 b\u1ea3o v\u1ec7 ph\u1ea3i g\u1ed3m 6 ch\u1eef s\u1ed1 v\u00e0 kh\u00f4ng ch\u1ee9a k\u00ed t\u1ef1 \u0111\u1eb7c bi\u1ec7t!";
@@ -114,6 +118,10 @@ extends JFrame {
                 cause = "Map l\u01b0u to\u1ea1 \u0111\u1ed9 ph\u1ea3i \u1edf tr\u01b0\u1eddng ho\u1eb7c l\u00e0ng!";
             } else if (enableKeepBotOnline && minuteKeepBotOnline < 1) {
                 cause = "S\u1ed1 ph\u00fat gi\u1eef bot online ph\u1ea3i l\u1edbn h\u01a1n 0!";
+            } else if (loginStagger == -1) {
+                cause = "Gi\u00e3n c\u00e1ch login kh\u00f4ng h\u1ee3p l\u1ec7!";
+            } else if (loginInterval == -1) {
+                cause = "Nh\u1ecbp login t\u1ed1i thi\u1ec3u kh\u00f4ng h\u1ee3p l\u1ec7!";
             }
             if (cause != null) {
                 Application.error(this, cause);
@@ -146,6 +154,8 @@ extends JFrame {
             if (enableKeepBotOnline) {
                 setting.setMinuteKeepBotOnline(minuteKeepBotOnline);
             }
+            setting.setLoginStagger(loginStagger);
+            setting.setLoginInterval(loginInterval);
             setting.save();
             this.dispose();
             Application.info(this, "L\u01b0u c\u00e0i \u0111\u1eb7t th\u00e0nh c\u00f4ng!");
@@ -186,6 +196,8 @@ extends JFrame {
         this.field_MapSaveReturnPoint.setText(String.valueOf(setting.getMapSaveReturnPoint()));
         this.checkbox_EnableKeepBotOnline.setSelected(setting.isEnableKeepBotOnline());
         this.field_MinuteKeepBotOnline.setText(String.valueOf(setting.getMinuteKeepBotOnline()));
+        this.field_LoginStagger.setText(String.valueOf(setting.getLoginStagger()));
+        this.field_LoginInterval.setText(String.valueOf(setting.getLoginInterval()));
         this.updateEnableState();
         this.setVisible(true);
     }
@@ -211,7 +223,7 @@ extends JFrame {
         panel2.setLayout((LayoutManager)new GridLayoutManager(1, 1, new Insets(0, 0, 0, 0), -1, -1));
         panel1.add((Component)panel2, "Center");
         JPanel panel3 = new JPanel();
-        panel3.setLayout((LayoutManager)new FormLayout("fill:d:noGrow,left:4dlu:noGrow,fill:d:grow", "center:d:noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow"));
+        panel3.setLayout((LayoutManager)new FormLayout("fill:d:noGrow,left:4dlu:noGrow,fill:d:grow", "center:d:noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow"));
         panel2.add((Component)panel3, new GridConstraints(0, 0, 1, 1, 0, 3, 3, 3, null, new Dimension(280, 400), null, 0, false));
         JLabel label1 = new JLabel();
         label1.setText("Gi\u1edbi h\u1ea1n \u0111\u0103ng nh\u1eadp:");
@@ -362,6 +374,18 @@ extends JFrame {
         this.field_MinuteKeepBotOnline = new JTextField();
         this.field_MinuteKeepBotOnline.setEnabled(false);
         panel12.add((Component)this.field_MinuteKeepBotOnline, new GridConstraints(0, 1, 1, 1, 8, 1, 4, 0, null, new Dimension(150, -1), null, 0, false));
+        JLabel labelStagger = new JLabel();
+        labelStagger.setText("Giãn cách login (giây):");
+        labelStagger.setToolTipText("Khoảng cách giữa 2 nick khi khởi động, tránh login hàng loạt bị ban IP. 0 = tắt.");
+        panel3.add((Component)labelStagger, cc.xy(1, 35));
+        this.field_LoginStagger = new JTextField();
+        panel3.add((Component)this.field_LoginStagger, cc.xy(3, 35, CellConstraints.FILL, CellConstraints.DEFAULT));
+        JLabel labelInterval = new JLabel();
+        labelInterval.setText("Nhịp login tối thiểu (giây):");
+        labelInterval.setToolTipText("Tối thiểu giữa 2 lần login bất kỳ trên toàn tool. 0 = tắt.");
+        panel3.add((Component)labelInterval, cc.xy(1, 37));
+        this.field_LoginInterval = new JTextField();
+        panel3.add((Component)this.field_LoginInterval, cc.xy(3, 37, CellConstraints.FILL, CellConstraints.DEFAULT));
         JPanel panel13 = new JPanel();
         panel13.setLayout((LayoutManager)new GridLayoutManager(1, 3, new Insets(0, 0, 0, 0), -1, -1));
         this.panel_Content.add((Component)panel13, new GridConstraints(1, 0, 1, 1, 0, 3, 3, 0, null, null, null, 0, false));

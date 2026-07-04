@@ -37,6 +37,8 @@ public class SettingService {
     private int mapSaveReturnPoint = 1;
     private boolean enableKeepBotOnline;
     private int minuteKeepBotOnline = 10;
+    private int loginStagger = 3;
+    private int loginInterval = 3;
 
     private SettingService() {
         this.load();
@@ -69,6 +71,8 @@ public class SettingService {
             this.messageOrderError = dis.readUTF();
             this.enableKeepBotOnline = dis.readBoolean();
             this.minuteKeepBotOnline = dis.readInt();
+            this.loginStagger = dis.readInt();
+            this.loginInterval = dis.readInt();
         }
         catch (Exception exception) {
             // empty catch block
@@ -102,6 +106,8 @@ public class SettingService {
             dos.writeUTF(this.messageOrderError);
             dos.writeBoolean(this.enableKeepBotOnline);
             dos.writeInt(this.minuteKeepBotOnline);
+            dos.writeInt(this.loginStagger);
+            dos.writeInt(this.loginInterval);
             FileUtils.save(PATH, baos.toByteArray());
         }
         catch (Exception e) {
@@ -123,6 +129,14 @@ public class SettingService {
 
     public int getLoginLimit() {
         return this.loginLimit;
+    }
+
+    public int getLoginStagger() {
+        return this.loginStagger;
+    }
+
+    public int getLoginInterval() {
+        return this.loginInterval;
     }
 
     public String getProtectionCode() {
@@ -219,6 +233,14 @@ public class SettingService {
 
     public void setLoginLimit(int loginLimit) {
         this.loginLimit = loginLimit;
+    }
+
+    public void setLoginStagger(int loginStagger) {
+        this.loginStagger = loginStagger;
+    }
+
+    public void setLoginInterval(int loginInterval) {
+        this.loginInterval = loginInterval;
     }
 
     public void setProtectionCode(String protectionCode) {

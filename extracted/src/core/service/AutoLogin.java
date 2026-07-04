@@ -6,10 +6,13 @@ package core.service;
 import core.model.Bot;
 import core.service.LoginLimit;
 import main.Application;
+import service.SettingService;
 import utils.Res;
 
 public class AutoLogin
 implements Runnable {
+    private static int staggerSlot = 0;
+    private static long lastPowerTime = 0L;
     private final Bot bot;
     public boolean onThread;
     public int countdownLogin;
@@ -103,7 +106,7 @@ implements Runnable {
     public void power(boolean power) {
         this.power = power;
         if (power) {
-            this.countdownLogin = 5;
+            this.countdownLogin = AutoLogin.nextStaggerCountdown();
             this.lastTimeCountdown = Res.t();
         } else {
             this.countdownLogin = 0;
@@ -111,6 +114,22 @@ implements Runnable {
             this.isLogin = false;
             this.timeLogin = 0L;
         }
+    }
+
+    // Rải thời điểm login lúc khởi động: các bot tạo trong cùng đợt nhận
+    // countdown 5, 5+gap, 5+2*gap... để server không thấy burst kết nối từ 1 IP.
+    // Nếu >60s không có bot mới nào bật (đã qua đợt tạo hàng loạt) thì reset slot
+    // => bot thêm lẻ lúc đang chạy vẫn login ngay sau 5s.
+    private static synchronized int nextStaggerCountdown() {
+        long now = Res.t();
+        int gap = SettingService.getInstance().getLoginStagger();
+        if (gap <= 0 || now - lastPowerTime > 60000L) {
+            staggerSlot = 0;
+        }
+        lastPowerTime = now;
+        int countdown = 5 + staggerSlot * gap;
+        ++staggerSlot;
+        return countdown;
     }
 }
 
