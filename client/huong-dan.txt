@@ -1,0 +1,20 @@
+HUONG DAN SU DUNG TOOL VXMM
+============================
+
+YEU CAU:
+- May tinh Windows
+- Da cai Java 8 tro len
+  Kiem tra: mo cmd, go "java -version". Neu bao khong nhan lenh -> tai Java tai:
+  https://www.java.com/download/
+
+CACH CHAY:
+1. Giai nen thu muc client ra dau tuy y
+2. Double click vao file "run.bat"
+3. Cua so tool se hien len, dang nhap bang tai khoan duoc cap
+
+DANG NHAP:
+- Web quan ly bot: https://bota.io.vn
+- Tai khoan / mat khau: do admin cung cap
+
+LIEN HE:
+- Neu gap loi, chup lai cua so den (cmd) va gui cho admin

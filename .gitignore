@@ -38,6 +38,7 @@ backend/backup-pre-tenant.sql
 # records/credentials.txt do LoginUI.java ghi (creds đã encode)
 # player-logs/* do LocalLog.java ghi (log nhân vật theo ngày)
 records/credentials.txt
+client/records/credentials.txt
 player-logs/
 .gitnexus
 
