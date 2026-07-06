@@ -48,7 +48,16 @@ player-logs/
 
 # Pre-migration/pre-refactor snapshots
 libs/app.jar.before-*
+client/libs/app.jar.before-*
 backup_pre_*.sql
 
 # Runtime log output do tool Java ghi
 order-logs/
+.claude/settings.local.json
+
+# Local-only config & secrets (khong day len server)
+.env.local
+Caddyfile.local
+docker-compose.local.yml
+*.rar
+records/

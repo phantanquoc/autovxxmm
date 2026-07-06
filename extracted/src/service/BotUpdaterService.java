@@ -297,9 +297,11 @@ extends Thread {
                 || Res.t() - this.collectRunStartTime >= 60000L;
             if ((allDone && pastGrace) || timedOut) {
                 String status = this.activeTotalCollected > 0 ? "DONE" : "FAILED";
-                this.ackCollectTask(this.activeCollectTaskId, status, this.activeTotalCollected);
-                this.stopAllCollectBots(collectBots);
-                this.resetActiveCollectState();
+                boolean acked = this.ackCollectTask(this.activeCollectTaskId, status, this.activeTotalCollected);
+                if (acked) {
+                    this.stopAllCollectBots(collectBots);
+                    this.resetActiveCollectState();
+                }
             }
             return;
         }
@@ -418,7 +420,7 @@ extends Thread {
      * perBotResults are derived from the in-memory perBotCollected map populated by
      * recordCollectSuccess() during the run.
      */
-    private void ackCollectTask(int taskId, String status, int totalCollected) {
+    private boolean ackCollectTask(int taskId, String status, int totalCollected) {
         try {
             JsonArray perBotResults = new JsonArray();
             for (Map.Entry<Integer, Integer> entry : this.perBotCollected.entrySet()) {
@@ -433,9 +435,11 @@ extends Thread {
             body.addProperty("totalCollected", totalCollected);
             body.add("perBotResults", perBotResults);
             Request ackReq = new Request(COLLECT_ACK_PATH, "POST");
-            ackReq.send((JsonElement) body);
+            Response response = ackReq.send((JsonElement) body);
+            return response != null && response.isSuccess();
         } catch (Exception e) {
             e.printStackTrace();
+            return false;
         }
     }
 

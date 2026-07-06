@@ -66,6 +66,7 @@ extends JFrame {
     private JTextField field_MinuteKeepBotOnline;
     private JTextField field_LoginStagger;
     private JTextField field_LoginInterval;
+    private JTextField field_ProcessInterval;
     private boolean isUpdating = false;
 
     public SettingUI() {
@@ -103,6 +104,7 @@ extends JFrame {
             int minuteKeepBotOnline = Res.getNumber(this.field_MinuteKeepBotOnline.getText().trim());
             int loginStagger = Res.getNumber(this.field_LoginStagger.getText().trim());
             int loginInterval = Res.getNumber(this.field_LoginInterval.getText().trim());
+            int processInterval = Res.getNumber(this.field_ProcessInterval.getText().trim());
             String cause = null;
             if (!SettingService.isValidProtectionCode(protectionCode) && autoRegisterProtection) {
                 cause = "M\u00e3 b\u1ea3o v\u1ec7 ph\u1ea3i g\u1ed3m 6 ch\u1eef s\u1ed1 v\u00e0 kh\u00f4ng ch\u1ee9a k\u00ed t\u1ef1 \u0111\u1eb7c bi\u1ec7t!";
@@ -122,6 +124,8 @@ extends JFrame {
                 cause = "Gi\u00e3n c\u00e1ch login kh\u00f4ng h\u1ee3p l\u1ec7!";
             } else if (loginInterval == -1) {
                 cause = "Nh\u1ecbp login t\u1ed1i thi\u1ec3u kh\u00f4ng h\u1ee3p l\u1ec7!";
+            } else if (processInterval < 10 || processInterval > 200) {
+                cause = "T\u1ed1c \u0111\u1ed9 x\u1eed l\u00fd ph\u1ea3i t\u1eeb 10-200ms!";
             }
             if (cause != null) {
                 Application.error(this, cause);
@@ -156,6 +160,7 @@ extends JFrame {
             }
             setting.setLoginStagger(loginStagger);
             setting.setLoginInterval(loginInterval);
+            setting.setProcessInterval(processInterval);
             setting.save();
             this.dispose();
             Application.info(this, "L\u01b0u c\u00e0i \u0111\u1eb7t th\u00e0nh c\u00f4ng!");
@@ -198,6 +203,7 @@ extends JFrame {
         this.field_MinuteKeepBotOnline.setText(String.valueOf(setting.getMinuteKeepBotOnline()));
         this.field_LoginStagger.setText(String.valueOf(setting.getLoginStagger()));
         this.field_LoginInterval.setText(String.valueOf(setting.getLoginInterval()));
+        this.field_ProcessInterval.setText(String.valueOf(setting.getProcessInterval()));
         this.updateEnableState();
         this.setVisible(true);
     }
@@ -223,7 +229,7 @@ extends JFrame {
         panel2.setLayout((LayoutManager)new GridLayoutManager(1, 1, new Insets(0, 0, 0, 0), -1, -1));
         panel1.add((Component)panel2, "Center");
         JPanel panel3 = new JPanel();
-        panel3.setLayout((LayoutManager)new FormLayout("fill:d:noGrow,left:4dlu:noGrow,fill:d:grow", "center:d:noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow"));
+        panel3.setLayout((LayoutManager)new FormLayout("fill:d:noGrow,left:4dlu:noGrow,fill:d:grow", "center:d:noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow,top:4dlu:noGrow,center:max(d;4px):noGrow"));
         panel2.add((Component)panel3, new GridConstraints(0, 0, 1, 1, 0, 3, 3, 3, null, new Dimension(280, 400), null, 0, false));
         JLabel label1 = new JLabel();
         label1.setText("Gi\u1edbi h\u1ea1n \u0111\u0103ng nh\u1eadp:");
@@ -386,6 +392,12 @@ extends JFrame {
         panel3.add((Component)labelInterval, cc.xy(1, 37));
         this.field_LoginInterval = new JTextField();
         panel3.add((Component)this.field_LoginInterval, cc.xy(3, 37, CellConstraints.FILL, CellConstraints.DEFAULT));
+        JLabel labelProcessInterval = new JLabel();
+        labelProcessInterval.setText("Tốc độ xử lý (ms):");
+        labelProcessInterval.setToolTipText("Chu kỳ xử lý trade/chat (10-200ms). Giá trị nhỏ = nhanh hơn, mặc định 30.");
+        panel3.add((Component)labelProcessInterval, cc.xy(1, 39));
+        this.field_ProcessInterval = new JTextField();
+        panel3.add((Component)this.field_ProcessInterval, cc.xy(3, 39, CellConstraints.FILL, CellConstraints.DEFAULT));
         JPanel panel13 = new JPanel();
         panel13.setLayout((LayoutManager)new GridLayoutManager(1, 3, new Insets(0, 0, 0, 0), -1, -1));
         this.panel_Content.add((Component)panel13, new GridConstraints(1, 0, 1, 1, 0, 3, 3, 0, null, null, null, 0, false));

@@ -13,6 +13,7 @@ import constants.API;
 import core.model.Order;
 import network.http.Request;
 import network.http.Response;
+import service.AsyncExecutor;
 import service.OrderUpdaterService;
 
 public class OrderService {
@@ -55,51 +56,63 @@ public class OrderService {
     }
 
     public void bet(int id) {
-        JsonObject requestData = new JsonObject();
-        requestData.addProperty("id", (Number)id);
-        Request request = new Request(BET_PATH, "PUT");
-        request.send((JsonElement)requestData);
+        AsyncExecutor.submit(() -> {
+            JsonObject requestData = new JsonObject();
+            requestData.addProperty("id", (Number)id);
+            Request request = new Request(BET_PATH, "PUT");
+            request.send((JsonElement)requestData);
+        });
     }
 
     public void lose(int id, String winName) {
-        JsonObject requestData = new JsonObject();
-        requestData.addProperty("id", (Number)id);
-        requestData.addProperty("winName", winName);
-        Request request = new Request(LOSE_PATH, "PUT");
-        request.send((JsonElement)requestData);
+        AsyncExecutor.submit(() -> {
+            JsonObject requestData = new JsonObject();
+            requestData.addProperty("id", (Number)id);
+            requestData.addProperty("winName", winName);
+            Request request = new Request(LOSE_PATH, "PUT");
+            request.send((JsonElement)requestData);
+        });
     }
 
     public void win(int id, int coinWin, int coinFee, int coinReward) {
-        JsonObject requestData = new JsonObject();
-        requestData.addProperty("id", (Number)id);
-        requestData.addProperty("coinWin", (Number)coinWin);
-        requestData.addProperty("coinFee", (Number)coinFee);
-        requestData.addProperty("coinReward", (Number)coinReward);
-        Request request = new Request(WIN_PATH, "PUT");
-        request.send((JsonElement)requestData);
+        AsyncExecutor.submit(() -> {
+            JsonObject requestData = new JsonObject();
+            requestData.addProperty("id", (Number)id);
+            requestData.addProperty("coinWin", (Number)coinWin);
+            requestData.addProperty("coinFee", (Number)coinFee);
+            requestData.addProperty("coinReward", (Number)coinReward);
+            Request request = new Request(WIN_PATH, "PUT");
+            request.send((JsonElement)requestData);
+        });
     }
 
     public void reward(int id) {
-        JsonObject requestData = new JsonObject();
-        requestData.addProperty("id", (Number)id);
-        Request request = new Request(REWARD_PATH, "PUT");
-        request.send((JsonElement)requestData);
+        AsyncExecutor.submit(() -> {
+            JsonObject requestData = new JsonObject();
+            requestData.addProperty("id", (Number)id);
+            Request request = new Request(REWARD_PATH, "PUT");
+            request.send((JsonElement)requestData);
+        });
     }
 
     public void error(int id, String reason) {
-        JsonObject requestData = new JsonObject();
-        requestData.addProperty("id", (Number)id);
-        requestData.addProperty("reason", reason);
-        Request request = new Request(ERROR_PATH, "PUT");
-        request.send((JsonElement)requestData);
+        AsyncExecutor.submit(() -> {
+            JsonObject requestData = new JsonObject();
+            requestData.addProperty("id", (Number)id);
+            requestData.addProperty("reason", reason);
+            Request request = new Request(ERROR_PATH, "PUT");
+            request.send((JsonElement)requestData);
+        });
     }
 
     public void log(int id, String log) {
-        JsonObject requestData = new JsonObject();
-        requestData.addProperty("id", (Number)id);
-        requestData.addProperty("log", log);
-        Request request = new Request(LOG_PATH, "PUT");
-        request.send((JsonElement)requestData);
+        AsyncExecutor.submit(() -> {
+            JsonObject requestData = new JsonObject();
+            requestData.addProperty("id", (Number)id);
+            requestData.addProperty("log", log);
+            Request request = new Request(LOG_PATH, "PUT");
+            request.send((JsonElement)requestData);
+        });
     }
 
     public static OrderService getInstance() {

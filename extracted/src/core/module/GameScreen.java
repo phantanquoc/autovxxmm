@@ -47,7 +47,7 @@ implements Runnable {
     @Override
     public final void run() {
         while (this.onThread) {
-            Res.sleep(100L);
+            Res.sleep(SettingService.getInstance().getProcessInterval());
             try {
                 if (Application.systemInterrupt) continue;
                 this.bot.getObserver().observe();

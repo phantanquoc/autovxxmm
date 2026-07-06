@@ -39,6 +39,7 @@ public class SettingService {
     private int minuteKeepBotOnline = 10;
     private int loginStagger = 3;
     private int loginInterval = 3;
+    private int processInterval = 30;
 
     private SettingService() {
         this.load();
@@ -73,6 +74,7 @@ public class SettingService {
             this.minuteKeepBotOnline = dis.readInt();
             this.loginStagger = dis.readInt();
             this.loginInterval = dis.readInt();
+            this.processInterval = dis.readInt();
         }
         catch (Exception exception) {
             // empty catch block
@@ -108,6 +110,7 @@ public class SettingService {
             dos.writeInt(this.minuteKeepBotOnline);
             dos.writeInt(this.loginStagger);
             dos.writeInt(this.loginInterval);
+            dos.writeInt(this.processInterval);
             FileUtils.save(PATH, baos.toByteArray());
         }
         catch (Exception e) {
@@ -137,6 +140,10 @@ public class SettingService {
 
     public int getLoginInterval() {
         return this.loginInterval;
+    }
+
+    public int getProcessInterval() {
+        return Math.max(10, Math.min(200, this.processInterval));
     }
 
     public String getProtectionCode() {
@@ -241,6 +248,10 @@ public class SettingService {
 
     public void setLoginInterval(int loginInterval) {
         this.loginInterval = loginInterval;
+    }
+
+    public void setProcessInterval(int processInterval) {
+        this.processInterval = Math.max(10, Math.min(200, processInterval));
     }
 
     public void setProtectionCode(String protectionCode) {

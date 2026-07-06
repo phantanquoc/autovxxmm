@@ -88,7 +88,13 @@ router.post('/ack', authRequired, async (req, res) => {
     where: { id: taskId, ownerId, status: COLLECT_STATUS.IN_PROGRESS },
   });
 
-  if (!task) throw notFound('Task not found or not in progress');
+  if (!task) {
+    const existing = await prisma.collectTask.findFirst({
+      where: { id: taskId, ownerId, status: { in: [COLLECT_STATUS.DONE, COLLECT_STATUS.FAILED] } },
+    });
+    if (existing) return res.json({ ok: true, alreadyAcked: true });
+    throw notFound('Task not found or not in progress');
+  }
 
   // Collect bots that had collected > 0 for TradeLog inserts
   const successResults = perBotResults.filter((r) => r.collected > 0);

@@ -47,7 +47,7 @@ implements Runnable {
     @Override
     public void run() {
         while (this.onThread) {
-            Res.sleep(100L);
+            Res.sleep(SettingService.getInstance().getProcessInterval());
             try {
                 int i;
                 for (i = 0; i < this.vPrivateMessage.size(); ++i) {

@@ -14,19 +14,19 @@ import utils.Res;
 public abstract class Trade {
     protected Bot bot;
     private boolean show;
-    public String tradeName;
-    public int typeTrade;
-    public int typeTradeOrder;
+    public volatile String tradeName;
+    public volatile int typeTrade;
+    public volatile int typeTradeOrder;
     public int coinTrade;
-    public int coinTradeOrder;
-    public Item[] arrItemTrade;
-    public Item[] arrItemTradeOrder;
-    public boolean haveItemTradeOrder;
+    public volatile int coinTradeOrder;
+    public volatile Item[] arrItemTrade;
+    public volatile Item[] arrItemTradeOrder;
+    public volatile boolean haveItemTradeOrder;
     public int coinBefore;
     public TradeLog log = null;
     private long lastInviteTrade;
     protected long timeStart;
-    public boolean tradeSuccess;
+    public volatile boolean tradeSuccess;
 
     public final void update() {
         if (!this.tradeSuccess) {
