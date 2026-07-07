@@ -23,7 +23,10 @@ const createBody = z.object({
   timeStart: z.number().int(),
   coinOrder: z.number().int(),
   botId: z.number().int(),
-  client: z.number().int().nonnegative().default(0),
+  // client cũ (jar non-split) gửi sentinel -1 nghĩa là "không chia client";
+  // giá trị âm hoặc thiếu đều chuẩn hoá về 0 = không phân vùng,
+  // để cứu ngay jar đã phân phối mà không phải rải lại.
+  client: z.number().int().default(0).transform((v) => (v < 0 ? 0 : v)),
 });
 
 router.post('/create', authRequired, readClient, async (req, res) => {

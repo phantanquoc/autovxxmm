@@ -161,7 +161,7 @@ extends Trade {
             Spam.getInstance(this.bot.getServer().getId()).removeCharSpam(this.tradeName);
             this.bot.getLocalLog().saveOrderCreateLog(this);
             this.tradeOrder.setCoin(this.coinTradeOrder);
-            Order order = OrderService.getInstance().create(this.tradeOrder.getServerId(), this.tradeOrder.getName(), this.bot.getMyChar().getName(), this.tradeOrder.getSecond(), this.tradeOrder.getType(), System.currentTimeMillis(), this.coinTradeOrder, this.bot.getId(), Application.isSplitClient ? Application.client : -1);
+            Order order = OrderService.getInstance().create(this.tradeOrder.getServerId(), this.tradeOrder.getName(), this.bot.getMyChar().getName(), this.tradeOrder.getSecond(), this.tradeOrder.getType(), System.currentTimeMillis(), this.coinTradeOrder, this.bot.getId(), Application.isSplitClient ? Application.client : 0);
             this.bot.getMessageStream().removeTradeOrder(this.tradeName);
             String optionalMessage = null;
             if (order == null) {
