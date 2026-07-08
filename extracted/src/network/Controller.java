@@ -61,7 +61,9 @@ public class Controller {
                     this.connection.bot.removeAllVector(false);
                     this.connection.bot.setLoading(true);
                     this.connection.bot.getTileMap().getvGo().removeAllElements();
-                    System.gc();
+                    // BỎ System.gc(): full GC stop-the-world gọi tay MỖI lần load map/khu.
+                    // Với 49 bot reconnect/đổi khu liên tục qua đêm -> GC storm -> CPU pin 100%.
+                    // Để JVM tự quản GC theo nhịp cấp phát.
                     this.connection.bot.getTileMap().setMapId((short)msg.reader().readUnsignedByte());
                     this.connection.bot.getTileMap().setTileID(msg.reader().readByte());
                     this.connection.bot.getTileMap().setBgID(msg.reader().readByte());

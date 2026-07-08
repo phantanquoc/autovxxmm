@@ -11,7 +11,7 @@ import utils.Res;
 public class DataReceiver
 implements Runnable {
     public Connection connection;
-    public boolean thread;
+    public volatile boolean thread;
 
     public DataReceiver(Connection connection) {
         this.connection = connection;

@@ -160,7 +160,8 @@ public class Bot {
         if (this.getMessageStream() != null) {
             this.getMessageStream().onThread = false;
         }
-        System.gc();
+        // BỎ System.gc(): destroy() bị gọi mỗi lần recreate/reconnect bot -> gọi tay full GC
+        // góp phần vào GC storm. Để JVM tự thu hồi.
     }
 
     public void createConnect() {

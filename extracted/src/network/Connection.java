@@ -30,9 +30,9 @@ public class Connection {
     private Service service;
     public DataInputStream dis;
     public DataOutputStream dos;
-    public boolean isConnected;
-    public boolean isConnecting;
-    public boolean isUnlocked;
+    public volatile boolean isConnected;
+    public volatile boolean isConnecting;
+    public volatile boolean isUnlocked;
     public Thread threadSend;
     public Thread threadRead;
     public Thread threadReceive;

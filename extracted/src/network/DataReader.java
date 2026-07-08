@@ -12,7 +12,7 @@ public class DataReader
 implements Runnable {
     private final Connection connection;
     private final Vector<Message> vMessage;
-    private boolean onThread;
+    private volatile boolean onThread;
 
     public DataReader(Connection connection) {
         this.connection = connection;
@@ -26,7 +26,7 @@ implements Runnable {
     @Override
     public void run() {
         this.onThread = true;
-        while (this.onThread) {
+        while (this.onThread && this.connection.isConnected) {
             try {
                 if (this.connection.isUnlocked && !this.vMessage.isEmpty()) {
                     while (!this.vMessage.isEmpty()) {

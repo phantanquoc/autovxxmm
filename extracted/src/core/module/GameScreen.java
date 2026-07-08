@@ -29,6 +29,7 @@ implements Runnable {
     public boolean isCaptcha;
     private long lastTimeUpdateParty;
     private long lastChangeZone;
+    private long lastChangeMap;
     public boolean isChangeMap = false;
     public int mapChange;
     public boolean isChangeZone = false;
@@ -64,8 +65,17 @@ implements Runnable {
                     this.lastTimeUpdateParty = Res.t();
                 }
                 this.onAliveActivities();
-                if (!this.isChangeMap || !this.bot.isMapValid()) continue;
-                this.isChangeMap = false;
+                // Reconcile cờ trạng thái với thực tế: changeZone()/changeMap() chỉ reset
+                // cờ ở nhánh thành công của chính nó, nên nếu waitMap timeout / bị dialog
+                // đánh thức sớm rồi gói map (-18) mới về sau đó, cờ sẽ kẹt true vĩnh viễn
+                // (UI mãi hiện "Đang chuyển sang khu X" dù đã tới nơi). Clear ở đây bảo đảm
+                // cờ tự khớp trong 1 tick sau khi bot thật sự tới map/khu đích.
+                if (this.isChangeMap && this.bot.getTileMap().getMapId() == this.mapChange) {
+                    this.isChangeMap = false;
+                }
+                if (this.isChangeZone && this.bot.getTileMap().getZoneId() == this.zoneChange) {
+                    this.isChangeZone = false;
+                }
             }
             catch (Exception e) {
                 e.printStackTrace();
@@ -200,10 +210,14 @@ implements Runnable {
     }
 
     protected void changeMap(int map) {
-        if (this.bot.getTileMap().getMapId() != map) {
+        // Giãn cách 10s như changeZone: nếu map đích bất khả đạt (server chặn / kẹt),
+        // onAliveActivities gọi lại changeMap mỗi tick 30ms -> chạy Dijkstra getListMap()
+        // liên tục -> đốt CPU. Guard này chặn hammer.
+        if (this.bot.getTileMap().getMapId() != map && Res.t() - this.lastChangeMap >= 10000L) {
             this.mapChange = map;
             this.isChangeMap = true;
             this.bot.getNextMap().gotoMap(map);
+            this.lastChangeMap = Res.t();
             if (this.isChangeMap && this.bot.getTileMap().getMapId() == map) {
                 this.mapChange = -1;
                 this.isChangeMap = false;

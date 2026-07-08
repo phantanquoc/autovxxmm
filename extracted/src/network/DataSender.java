@@ -12,7 +12,7 @@ public class DataSender
 implements Runnable {
     private final Connection connection;
     private final Vector<Message> messages;
-    public boolean thread;
+    public volatile boolean thread;
 
     public DataSender(Connection connection) {
         this.connection = connection;
@@ -22,7 +22,7 @@ implements Runnable {
     @Override
     public final void run() {
         this.thread = true;
-        while (this.thread) {
+        while (this.thread && this.connection.isConnected) {
             try {
                 if (this.connection.isUnlocked) {
                     while (!this.messages.isEmpty()) {

@@ -15,6 +15,12 @@ public final class mSocket {
     public mSocket(String ip, int port) {
         try {
             this.socket = new Socket(ip, port);
+            // SO_TIMEOUT: qua đêm server có thể rớt TCP half-open (không FIN/RST, NAT idle
+            // timeout) -> readByte() block vô hạn -> bot "online giả" treo mãi. Đặt timeout
+            // 90s để readMessage() ném SocketTimeoutException -> DataReceiver thoát ->
+            // closeConnectionAsynchronous() -> reconnect. 90s > nhịp gói server bình thường
+            // nên không cắt nhầm kết nối đang khoẻ.
+            this.socket.setSoTimeout(90000);
         }
         catch (Exception exception) {
             // empty catch block
