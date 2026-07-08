@@ -21,6 +21,8 @@ router.get('/', async (req, res) => {
     last24hOrders,
     totalTradeLogs,
     last24hTrade,
+    betSum,
+    collectSum,
   ] = await Promise.all([
     prisma.bot.count({ where: { ...ownerFilter, deletedAt: null } }),
     prisma.bot.count({ where: { ...ownerFilter, deletedAt: null, obsStatus: 'ONLINE' } }),
@@ -29,11 +31,17 @@ router.get('/', async (req, res) => {
     prisma.order.count({ where: { ...ownerFilter, deletedAt: null, createdAt: { gte: since24h } } }),
     prisma.tradeLog.count({ where: ownerFilter }),
     prisma.tradeLog.count({ where: { ...ownerFilter, createdAt: { gte: since24h } } }),
+    prisma.order.aggregate({ _sum: { coinOrder: true }, where: { ...ownerFilter, deletedAt: null } }),
+    prisma.collectTask.aggregate({ _sum: { totalCollected: true }, where: ownerFilter }),
   ]);
   res.json({
     bots: { total: totalBots, online: onlineBots },
     orders: { total: totalOrders, active: activeOrders, last24h: last24hOrders },
     tradeLogs: { total: totalTradeLogs, last24h: last24hTrade },
+    coins: {
+      totalBet: betSum._sum.coinOrder ?? 0,
+      totalCollected: collectSum._sum.totalCollected ?? 0,
+    },
   });
 });
 

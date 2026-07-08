@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Bot, ShoppingCart, Coins, Users, Clock, CheckCircle, XCircle, Ban } from 'lucide-react'
+import { Bot, ShoppingCart, Coins, Wallet, Clock, CheckCircle, XCircle, Ban } from 'lucide-react'
 import { useStats } from './useStats'
 import { StatCard, StatRow } from './StatCards'
 import { OrderTrendChart } from './OrderTrendChart'
 import { RecentOrdersTable } from './RecentOrdersTable'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { formatXu } from '@/lib/format'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { OwnerFilter } from '@/components/OwnerFilter'
@@ -53,9 +54,10 @@ export function DashboardPage() {
           loading={isLoading}
         />
         <StatCard
-          icon={Users}
-          label="Tổng người dùng bot"
-          value={stats?.bots.total ?? '—'}
+          icon={Wallet}
+          label="Tổng xu bot cược"
+          value={stats ? `${formatXu(stats.coins.totalBet)} xu` : '—'}
+          sub={stats ? `Gom xu: ${formatXu(stats.coins.totalCollected)} xu` : undefined}
           variant="info"
           loading={isLoading}
         />

@@ -6,6 +6,7 @@ interface StatsData {
   bots: { total: number; online: number }
   orders: { total: number; active: number; last24h: number }
   tradeLogs: { total: number; last24h: number }
+  coins: { totalBet: number; totalCollected: number }
 }
 
 export function useStats(ownerId?: number) {
