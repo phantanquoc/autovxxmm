@@ -31,16 +31,24 @@ router.get('/', async (req, res) => {
     prisma.order.count({ where: { ...ownerFilter, deletedAt: null, createdAt: { gte: since24h } } }),
     prisma.tradeLog.count({ where: ownerFilter }),
     prisma.tradeLog.count({ where: { ...ownerFilter, createdAt: { gte: since24h } } }),
-    prisma.order.aggregate({ _sum: { coinOrder: true }, where: { ...ownerFilter, deletedAt: null } }),
-    prisma.collectTask.aggregate({ _sum: { totalCollected: true }, where: ownerFilter }),
+    // Tổng xu bot cược = tổng xu đang có trong hành trang các bot ORDER (obsCoin observer push).
+    prisma.bot.aggregate({
+      _sum: { obsCoin: true },
+      where: { ...ownerFilter, deletedAt: null, role: 'ORDER' },
+    }),
+    // Tổng xu bot gom = tổng xu đang có trong hành trang các bot COLLECT.
+    prisma.bot.aggregate({
+      _sum: { obsCoin: true },
+      where: { ...ownerFilter, deletedAt: null, role: 'COLLECT' },
+    }),
   ]);
   res.json({
     bots: { total: totalBots, online: onlineBots },
     orders: { total: totalOrders, active: activeOrders, last24h: last24hOrders },
     tradeLogs: { total: totalTradeLogs, last24h: last24hTrade },
     coins: {
-      totalBet: betSum._sum.coinOrder ?? 0,
-      totalCollected: collectSum._sum.totalCollected ?? 0,
+      totalBet: betSum._sum.obsCoin ?? 0,
+      totalCollected: collectSum._sum.obsCoin ?? 0,
     },
   });
 });
