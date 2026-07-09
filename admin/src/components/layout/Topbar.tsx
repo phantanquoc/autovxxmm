@@ -1,4 +1,4 @@
-import { Moon, Sun, LogOut } from 'lucide-react'
+import { Moon, Sun, LogOut, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
@@ -10,10 +10,12 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { clearToken, getCurrentUser } from '@/lib/auth'
 import { useTheme } from '@/hooks/useTheme'
+import { useSidebar } from '@/hooks/useSidebar'
 import { useNavigate } from 'react-router-dom'
 
 export function Topbar() {
   const { theme, toggleTheme } = useTheme()
+  const { isDrawerOpen, openDrawer } = useSidebar()
   const user = getCurrentUser()
   const navigate = useNavigate()
 
@@ -23,7 +25,17 @@ export function Topbar() {
   }
 
   return (
-    <header className="h-14 px-6 border-b bg-card sticky top-0 z-10 flex items-center gap-4 shrink-0">
+    <header className="h-14 px-4 md:px-6 border-b bg-card sticky top-0 z-10 flex items-center gap-4 shrink-0">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="md:hidden"
+        onClick={openDrawer}
+        aria-label="Mở menu"
+        aria-expanded={isDrawerOpen}
+      >
+        <Menu className="h-5 w-5" />
+      </Button>
       <div className="flex-1" />
       <div className="flex items-center gap-2">
         <Button

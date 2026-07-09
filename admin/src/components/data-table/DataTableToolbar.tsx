@@ -51,7 +51,7 @@ export function DataTableToolbar({
   return (
     <div className="flex flex-wrap items-center gap-2 p-4 border-b">
       {onSearch && (
-        <div className="relative flex-1 min-w-48 max-w-sm">
+        <div className="relative flex-1 min-w-0 sm:min-w-48 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             className="pl-9 pr-8 h-9"

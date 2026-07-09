@@ -22,11 +22,11 @@ export function DataTablePagination({
   const end = Math.min(page * pageSize, total)
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-t">
-      <div className="text-sm text-muted-foreground">
+    <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-t">
+      <div className="text-sm text-muted-foreground hidden sm:block">
         {total > 0 ? `${start}-${end} / ${total} kết quả` : '0 kết quả'}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 ml-auto">
         {onPageSizeChange && (
           <Select value={String(pageSize)} onValueChange={v => onPageSizeChange(Number(v))}>
             <SelectTrigger className="h-8 w-20">
